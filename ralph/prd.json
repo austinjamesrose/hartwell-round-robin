@@ -241,7 +241,7 @@
         "Verify in browser: with edge case player counts, confirm warnings appear if constraints relaxed"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

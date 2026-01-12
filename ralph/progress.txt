@@ -241,3 +241,24 @@ Started: 2026-01-11
   - Games table columns: week_id, round_number, court_number, team1_player1_id, team1_player2_id, etc.
   - Byes table: week_id, round_number, player_id
 ---
+
+## 2026-01-11 - US-008c
+- Implemented two-phase constraint relaxation in schedule generation
+- Phase 1: Try strict mode (no repeat partnerships)
+- Phase 2: If strict fails, try relaxed mode (allow repeats with warnings)
+- Added FormTeamsResult interface to track repeat partnerships during team formation
+- formTeams() now accepts allowRepeatPartnerships parameter
+- attemptGeneration() propagates relaxation setting to formTeams()
+- Created tryGenerateWithMode() helper for phase-based retry logic
+- Warnings generated for: repeat partnerships, uneven bye distribution, game count variance
+- Warnings persist in Schedule object and are saved to weeks.schedule_warnings column
+- Week management page already displays schedule_warnings if present
+- Files modified:
+  - src/lib/scheduling/generateSchedule.ts (two-phase retry, FormTeamsResult type)
+  - src/lib/scheduling/generateSchedule.test.ts (6 new constraint relaxation tests)
+- **Learnings for future iterations:**
+  - Use two-phase approach: strict first, relaxed fallback
+  - Track constraint relaxations as string warnings in Schedule.warnings
+  - The algorithm is robust enough that relaxation rarely triggers for normal configs (24-32 players, 4-8 courts)
+  - When testing constraint relaxation, need to run multiple iterations since algorithm is probabilistic
+---
