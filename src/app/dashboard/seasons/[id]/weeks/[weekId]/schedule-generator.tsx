@@ -290,6 +290,15 @@ export function ScheduleGenerator({
           </Alert>
         )}
 
+        {/* Warning message for invalid player count - visible above button */}
+        {!validation.isValid && (
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <AlertDescription className="text-yellow-800">
+              {validation.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Generate button */}
         <div className="flex gap-3">
           <TooltipProvider>
