@@ -12,6 +12,7 @@ import {
   createSeasonSchema,
   createSeasonDefaults,
   calculateWeekDates,
+  validateSeasonName,
   type CreateSeasonFormValues,
 } from "@/lib/seasons/validation";
 
@@ -42,11 +43,34 @@ export default function CreateSeasonPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isValidatingName, setIsValidatingName] = useState(false);
 
   const form = useForm<CreateSeasonFormValues>({
     resolver: zodResolver(createSeasonSchema),
     defaultValues: createSeasonDefaults,
   });
+
+  // Validate season name uniqueness on blur
+  async function handleNameBlur(name: string) {
+    if (!name.trim()) {
+      setNameError(null);
+      return;
+    }
+
+    setIsValidatingName(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setIsValidatingName(false);
+      return;
+    }
+
+    const result = await validateSeasonName(name, user.id);
+    setNameError(result.error || null);
+    setIsValidatingName(false);
+  }
 
   async function onSubmit(data: CreateSeasonFormValues) {
     setIsLoading(true);
@@ -61,6 +85,14 @@ export default function CreateSeasonPage() {
 
     if (!user) {
       setError("You must be logged in to create a season");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate season name uniqueness before creating
+    const nameValidation = await validateSeasonName(data.name, user.id);
+    if (!nameValidation.valid) {
+      setNameError(nameValidation.error || null);
       setIsLoading(false);
       return;
     }
@@ -150,12 +182,31 @@ export default function CreateSeasonPage() {
                         <Input
                           placeholder="e.g., Spring 2026 League"
                           {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            handleNameBlur(e.target.value);
+                          }}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Clear the duplicate error when user starts typing again
+                            if (nameError) setNameError(null);
+                          }}
                         />
                       </FormControl>
                       <FormDescription>
                         A descriptive name for this season
                       </FormDescription>
                       <FormMessage />
+                      {nameError && (
+                        <p className="text-sm font-medium text-destructive">
+                          {nameError}
+                        </p>
+                      )}
+                      {isValidatingName && (
+                        <p className="text-sm text-muted-foreground">
+                          Checking name availability...
+                        </p>
+                      )}
                     </FormItem>
                   )}
                 />
@@ -226,7 +277,7 @@ export default function CreateSeasonPage() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button type="submit" disabled={isLoading}>
+                  <Button type="submit" disabled={isLoading || !!nameError || isValidatingName}>
                     {isLoading ? "Creating..." : "Create Season"}
                   </Button>
                   <Button

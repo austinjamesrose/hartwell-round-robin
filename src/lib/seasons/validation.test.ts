@@ -1,9 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createSeasonSchema,
   calculateWeekDates,
   createSeasonDefaults,
+  validateSeasonName,
 } from "./validation";
+
+// Mock the Supabase client module
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(),
+}));
+
+// Import the mocked module to control its behavior
+import { createClient } from "@/lib/supabase/client";
 
 describe("createSeasonSchema", () => {
   describe("name validation", () => {
@@ -314,5 +323,114 @@ describe("calculateWeekDates", () => {
     expect(weeks[11].weekNumber).toBe(12);
     // Week 12 should be 11*7 = 77 days after start
     expect(weeks[11].date).toBe("2026-03-18");
+  });
+});
+
+describe("validateSeasonName", () => {
+  const mockAdminId = "test-admin-id";
+
+  // Helper to create a mock Supabase client with configurable response
+  function createMockClient(existingSeasons: { id: string; name: string }[] = []) {
+    return {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockResolvedValue({
+              data: existingSeasons,
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns valid when no duplicate exists", async () => {
+    // No existing seasons with this name
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validateSeasonName("Test Season", mockAdminId);
+
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns error when duplicate exists (case-insensitive)", async () => {
+    // Existing season with same name, different case
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "season-1", name: "Test Season" }]) as never
+    );
+
+    const result = await validateSeasonName("test season", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A season with this name already exists");
+  });
+
+  it("trims whitespace before comparison", async () => {
+    // Existing season with name that matches after trimming
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "season-1", name: "Test Season" }]) as never
+    );
+
+    const result = await validateSeasonName("  Test Season  ", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A season with this name already exists");
+  });
+
+  it("returns invalid for empty name", async () => {
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validateSeasonName("", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Season name is required");
+  });
+
+  it("returns invalid for whitespace-only name", async () => {
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validateSeasonName("   ", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Season name is required");
+  });
+
+  it("returns valid when database returns error (fails open)", async () => {
+    // Mock a database error
+    vi.mocked(createClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: "Database connection failed" },
+            }),
+          }),
+        }),
+      }),
+    } as never);
+
+    const result = await validateSeasonName("Test Season", mockAdminId);
+
+    // Should fail open and allow the form to proceed
+    expect(result.valid).toBe(true);
+  });
+
+  it("allows different season names", async () => {
+    // Existing season with a different name
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "season-1", name: "Spring 2026" }]) as never
+    );
+
+    const result = await validateSeasonName("Fall 2026", mockAdminId);
+
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
   });
 });

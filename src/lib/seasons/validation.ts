@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/client";
 
 // Validation schema for creating a new season
 // These rules match the database constraints in supabase/schema.sql
@@ -72,4 +73,64 @@ export function calculateWeekDates(
   }
 
   return weeks;
+}
+
+/**
+ * Result of validating a season name for uniqueness.
+ */
+export type SeasonNameValidationResult = {
+  valid: boolean;
+  error?: string;
+};
+
+/**
+ * Validates that a season name is unique for the current admin.
+ * Uses case-insensitive comparison and trims whitespace.
+ *
+ * @param name - The season name to validate
+ * @param adminId - The admin's user ID to scope the check
+ * @returns Promise with validation result
+ */
+export async function validateSeasonName(
+  name: string,
+  adminId: string
+): Promise<SeasonNameValidationResult> {
+  // Trim whitespace from the name
+  const trimmedName = name.trim();
+
+  // Empty names are handled by the schema, but we check just in case
+  if (!trimmedName) {
+    return { valid: false, error: "Season name is required" };
+  }
+
+  const supabase = createClient();
+
+  // Query for existing seasons with matching name (case-insensitive)
+  // Using LOWER() on both sides for case-insensitive comparison
+  const { data: existingSeasons, error } = await supabase
+    .from("seasons")
+    .select("id, name")
+    .eq("admin_id", adminId)
+    .ilike("name", trimmedName);
+
+  if (error) {
+    // If there's a database error, we'll let the form proceed
+    // and catch the duplicate at insert time
+    console.error("Error checking season name uniqueness:", error);
+    return { valid: true };
+  }
+
+  // Check if any existing season has the same name (case-insensitive, exact match)
+  const duplicate = existingSeasons?.find(
+    (season) => season.name.toLowerCase().trim() === trimmedName.toLowerCase()
+  );
+
+  if (duplicate) {
+    return {
+      valid: false,
+      error: "A season with this name already exists",
+    };
+  }
+
+  return { valid: true };
 }
