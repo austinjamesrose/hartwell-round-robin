@@ -355,7 +355,7 @@
         "Verify in browser: enter invalid score 11-11 and confirm error shown"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

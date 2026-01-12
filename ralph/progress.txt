@@ -364,3 +364,31 @@ Started: 2026-01-11
   - Score inputs track local state but don't save yet (US-012b handles saving)
   - 56px inputs exceed 44px minimum for touch targets
 ---
+
+## 2026-01-11 - US-012b
+- Created score validation module at src/lib/scores/validation.ts
+- validateScore() enforces pickleball rules:
+  - Exactly one team must score 11 (winning score)
+  - Other team must score 0-10
+  - Both scores required
+  - Returns {valid: boolean, error: string | null}
+- getWinningTeam() returns 1, 2, or null for invalid scores
+- parseScoreInput() safely parses string input to number or null
+- Added 52 comprehensive unit tests for validation
+- Enhanced ScoreEntry component:
+  - Save button appears when both scores are entered and differ from saved
+  - Validation runs on save attempt with clear error messages
+  - Error state shows red border on inputs
+  - Game status changes to "completed" on valid save
+  - Loading spinner during save operation
+- Files created:
+  - src/lib/scores/validation.ts
+  - src/lib/scores/validation.test.ts
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- **Learnings for future iterations:**
+  - Score validation: check 11-11 case before computing team1Won/team2Won
+  - Use Map<gameId, error> for per-game error tracking
+  - Use Set<gameId> for tracking which games are currently saving
+  - hasUnsavedChanges() compares local state to database values
+---
