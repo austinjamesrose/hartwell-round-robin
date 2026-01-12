@@ -350,7 +350,7 @@
         "Run: npm run test -- exportScoreSheetsPdf.test.ts (all tests pass)"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Reference existing PDF code in src/lib/pdf/exportSchedulePdf.ts for patterns. Create new file: src/lib/pdf/exportScoreSheetsPdf.ts"
     },
     {

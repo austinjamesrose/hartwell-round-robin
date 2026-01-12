@@ -277,3 +277,24 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - ScheduleGenerator and ScheduleViewer are sibling components - shared state would require lifting up to page
   - For server component pages, shared client state requires client component wrappers
 ---
+
+## 2026-01-12 05:34 CST - US-V4-013
+- What was implemented:
+  - Created `src/lib/pdf/exportScoreSheetsPdf.ts` with PDF generation for printable score sheets
+  - PDF layout: landscape letter format, one page per round, 3-column grid of court boxes
+  - Each court box shows: court number (header), team 1 players, team 2 players, empty score boxes (60pt squares)
+  - Page headers include: season name, week number, date, and round number
+  - Footer with page numbers ("Page X of Y")
+  - Exported `generateCourtBox()` helper function for testing
+  - Added "Export Score Sheets" button to schedule-viewer.tsx (next to existing Export PDF)
+  - Created comprehensive test file with 14 tests
+- Files changed:
+  - src/lib/pdf/exportScoreSheetsPdf.ts (new - PDF generation for score sheets)
+  - src/lib/pdf/exportScoreSheetsPdf.test.ts (new - 14 tests)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (added button and import)
+- **Learnings for future iterations:**
+  - jsPDF `rect()` can draw filled rectangles with "F" flag for filled: `doc.rect(x, y, w, h, "F")`
+  - Score box size of 60pt (~0.83 inch) is comfortable for handwritten scores
+  - Landscape letter size is 792x612 points (width x height)
+  - Reference existing PDF code (`exportSchedulePdf.ts`) for consistent patterns and mock setup
+---
