@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,6 +10,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { validateScore, parseScoreInput } from "@/lib/scores/validation";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -39,11 +43,19 @@ interface GameScoreInput {
   team2Score: string;
 }
 
+// Error state for a game
+interface GameError {
+  message: string;
+}
+
 export function ScoreEntry({
   games,
   players,
   weekStatus,
 }: ScoreEntryProps) {
+  const router = useRouter();
+  const supabase = createClient();
+
   // Track local score input state
   const [scoreInputs, setScoreInputs] = useState<Map<string, GameScoreInput>>(() => {
     // Initialize from existing game scores
@@ -56,6 +68,12 @@ export function ScoreEntry({
     }
     return initial;
   });
+
+  // Track validation errors per game
+  const [errors, setErrors] = useState<Map<string, GameError>>(new Map());
+
+  // Track saving state per game
+  const [savingGames, setSavingGames] = useState<Set<string>>(new Set());
 
   // Create player name lookup map
   const playerNameMap = useMemo(() => {
@@ -111,6 +129,91 @@ export function ScoreEntry({
       });
       return newMap;
     });
+
+    // Clear error when user starts editing
+    setErrors((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(gameId);
+      return newMap;
+    });
+  }
+
+  // Save score for a game
+  async function handleSaveScore(gameId: string) {
+    const scoreInput = getScoreInput(gameId);
+    const team1Score = parseScoreInput(scoreInput.team1Score);
+    const team2Score = parseScoreInput(scoreInput.team2Score);
+
+    // Validate scores
+    const validation = validateScore(team1Score, team2Score);
+    if (!validation.valid) {
+      setErrors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(gameId, { message: validation.error || "Invalid score" });
+        return newMap;
+      });
+      return;
+    }
+
+    // Clear any existing error
+    setErrors((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(gameId);
+      return newMap;
+    });
+
+    // Mark as saving
+    setSavingGames((prev) => new Set(prev).add(gameId));
+
+    try {
+      // Save to database - update game with scores and mark as completed
+      const { error } = await supabase
+        .from("games")
+        .update({
+          team1_score: team1Score,
+          team2_score: team2Score,
+          status: "completed" as const,
+        })
+        .eq("id", gameId);
+
+      if (error) {
+        setErrors((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(gameId, { message: `Failed to save: ${error.message}` });
+          return newMap;
+        });
+        return;
+      }
+
+      // Refresh the page to get updated data
+      router.refresh();
+    } catch {
+      setErrors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(gameId, { message: "Failed to save score" });
+        return newMap;
+      });
+    } finally {
+      setSavingGames((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(gameId);
+        return newSet;
+      });
+    }
+  }
+
+  // Check if a game has unsaved changes
+  function hasUnsavedChanges(game: Game): boolean {
+    const scoreInput = getScoreInput(game.id);
+    const currentTeam1 = game.team1_score !== null ? String(game.team1_score) : "";
+    const currentTeam2 = game.team2_score !== null ? String(game.team2_score) : "";
+    return scoreInput.team1Score !== currentTeam1 || scoreInput.team2Score !== currentTeam2;
+  }
+
+  // Check if both score inputs are filled (for enabling save button)
+  function hasBothScores(gameId: string): boolean {
+    const scoreInput = getScoreInput(gameId);
+    return scoreInput.team1Score !== "" && scoreInput.team2Score !== "";
   }
 
   // Score entry is only available for finalized schedules
@@ -144,6 +247,9 @@ export function ScoreEntry({
               {round.games.map((game) => {
                 const scoreInput = getScoreInput(game.id);
                 const hasScore = game.team1_score !== null && game.team2_score !== null;
+                const error = errors.get(game.id);
+                const isSaving = savingGames.has(game.id);
+                const showSaveButton = hasUnsavedChanges(game) && hasBothScores(game.id);
 
                 return (
                   <div
@@ -170,7 +276,9 @@ export function ScoreEntry({
                             value={scoreInput.team1Score}
                             onChange={(e) => handleScoreChange(game.id, "team1", e.target.value)}
                             placeholder="0"
-                            className="w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation"
+                            className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
+                              error ? "border-red-500 focus:ring-red-500" : ""
+                            }`}
                             style={{ minWidth: "56px", minHeight: "56px" }}
                             aria-label={`Team 1 score for Court ${game.court_number}`}
                           />
@@ -202,7 +310,9 @@ export function ScoreEntry({
                             value={scoreInput.team2Score}
                             onChange={(e) => handleScoreChange(game.id, "team2", e.target.value)}
                             placeholder="0"
-                            className="w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation"
+                            className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
+                              error ? "border-red-500 focus:ring-red-500" : ""
+                            }`}
                             style={{ minWidth: "56px", minHeight: "56px" }}
                             aria-label={`Team 2 score for Court ${game.court_number}`}
                           />
@@ -218,6 +328,26 @@ export function ScoreEntry({
                         </div>
                       </div>
                     </div>
+
+                    {/* Error message */}
+                    {error && (
+                      <div className="mt-3 text-sm text-red-600 font-medium">
+                        {error.message}
+                      </div>
+                    )}
+
+                    {/* Save button - only show if there are unsaved changes and both scores filled */}
+                    {showSaveButton && (
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveScore(game.id)}
+                          disabled={isSaving}
+                        >
+                          {isSaving ? "Saving..." : "Save Score"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
