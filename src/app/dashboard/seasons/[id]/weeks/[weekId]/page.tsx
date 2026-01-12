@@ -222,6 +222,7 @@ export default async function WeekManagementPage({
             players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
             scheduleWarnings={currentWeek.schedule_warnings}
             weekStatus={currentWeek.status}
+            weekId={weekId}
           />
         </div>
       </div>
