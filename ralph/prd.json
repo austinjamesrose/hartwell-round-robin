@@ -408,7 +408,7 @@
         "Verify in browser: view leaderboard with data from multiple weeks"
       ],
       "priority": 21,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

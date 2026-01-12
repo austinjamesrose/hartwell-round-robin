@@ -426,3 +426,30 @@ Started: 2026-01-11
   - Week can be marked complete even with missing scores (just show warning)
   - Mark Complete and Unfinalize buttons appear in same section for finalized weeks
 ---
+
+## 2026-01-11 - US-015
+- Created leaderboard section in season detail page showing player rankings
+- Created ranking module at src/lib/leaderboard/ranking.ts:
+  - calculateRankings(): sorts players by total points (primary), win % (tiebreaker)
+  - arePlayersTied(): detects ties based on points and win %
+  - formatRank(): returns "T3" for tied rank 3, "3" for non-tied
+  - formatWinPercentage(): formats as "75%" or "62.5%"
+- 27 unit tests for all ranking logic
+- Mobile-optimized Leaderboard component:
+  - Table columns: Rank, Player, Points, Games, Wins, Win%
+  - Top 3 highlighted with gold/silver/bronze backgrounds
+  - Responsive: Games/Wins hidden on mobile, shown below player name
+  - Tied players show same rank with T prefix
+- Season detail page aggregates game scores to build PlayerStats
+- Files created:
+  - src/lib/leaderboard/ranking.ts
+  - src/lib/leaderboard/ranking.test.ts
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx
+- **Learnings for future iterations:**
+  - Use Map<playerId, stats> for aggregating player statistics from games
+  - Filter out players with gamesPlayed === 0 from leaderboard
+  - Use void _seasonId pattern for unused props that will be used later
+  - Ranking uses skip-tie approach: 1, 2, T3, T3, 5 (not 1, 2, T3, T3, T3)
+---
