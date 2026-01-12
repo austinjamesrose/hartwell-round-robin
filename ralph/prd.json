@@ -266,7 +266,7 @@
         "Run: npm run test -- roster (all tests pass)"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Mock localStorage in tests using vi.spyOn(Storage.prototype, 'getItem')"
     },
     {

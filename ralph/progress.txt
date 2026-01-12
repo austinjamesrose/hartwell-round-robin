@@ -214,3 +214,23 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - When testing components with duplicate text, use getByTestId or getAllByText instead of getByText
   - Game filtering: sort by court_number when filtering by round, sort by round_number when filtering by court
 ---
+
+## 2026-01-12 05:19 CST - US-V4-010
+- What was implemented:
+  - Added collapsible roster view with expand/collapse toggle button
+  - Used ChevronDown/ChevronRight icons from lucide-react for toggle indicator
+  - Collapsed state shows player count summary: "(X players in roster)"
+  - Expanded state shows full player list with add/remove functionality
+  - Collapse state persisted to localStorage key 'roster-collapsed'
+  - Smooth animation using Tailwind transitions (max-h, opacity, duration-300)
+  - Added 7 new tests for collapsible functionality
+- Files changed:
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added collapse state, toggle, icons)
+  - src/app/dashboard/seasons/[id]/roster-manager.test.tsx (added localStorage mock, 7 collapse tests)
+- **Learnings for future iterations:**
+  - Avoid calling setState in useEffect - use lazy initializer with useState(() => ...) instead
+  - The `react-hooks/set-state-in-effect` ESLint rule enforces this pattern
+  - Mock localStorage at file scope and reset in beforeEach to share across describe blocks
+  - Use `typeof window !== "undefined"` check for SSR-safe localStorage access
+  - Tailwind's max-h-[2000px] with transition-all provides smooth collapse animation
+---
