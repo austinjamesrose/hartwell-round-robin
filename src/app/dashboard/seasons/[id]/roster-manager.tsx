@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Upload } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,7 +15,14 @@ import {
   checkPlayerRemoval,
   validatePlayerNameForDuplicate,
   type PlayerNameValidationResult,
+  normalizePlayerName,
 } from "@/lib/players/validation";
+import {
+  parsePlayerNames,
+  findDuplicates,
+  findExistingPlayer,
+  getImportPreviewSummary,
+} from "@/lib/players/bulkImport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,6 +55,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { Database } from "@/types/database";
 
 type Player = Database["public"]["Tables"]["players"]["Row"];
@@ -92,6 +100,11 @@ export function RosterManager({
     return false;
   });
 
+  // Bulk import dialog state
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
+
   // Toggle roster collapse and persist to localStorage
   function toggleRosterCollapse() {
     setIsRosterCollapsed((prev) => {
@@ -106,6 +119,20 @@ export function RosterManager({
 
   // Filter available players (not already in roster)
   const availablePlayers = allPlayers.filter((p) => !rosterPlayerIds.has(p.id));
+
+  // Computed preview for bulk import - recalculates when text changes
+  const bulkImportPreview = useMemo(() => {
+    const parsedNames = parsePlayerNames(bulkImportText);
+    const { duplicates, newNames } = findDuplicates(parsedNames, allPlayers);
+    const summary = getImportPreviewSummary(parsedNames.length, duplicates.length);
+
+    return {
+      parsedNames,
+      duplicates,
+      newNames,
+      summary,
+    };
+  }, [bulkImportText, allPlayers]);
 
   // Form for creating new player
   const newPlayerForm = useForm<NewPlayerFormValues>({
@@ -351,6 +378,112 @@ export function RosterManager({
     setPlayerToRemove(null);
   }
 
+  // Handle bulk import of players
+  async function handleBulkImport() {
+    const { parsedNames, duplicates, newNames } = bulkImportPreview;
+
+    if (parsedNames.length === 0) {
+      toast.error("No player names found");
+      return;
+    }
+
+    setIsBulkImporting(true);
+    setError(null);
+
+    const supabase = createClient();
+
+    // Get current user to set admin_id for new players
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Not authenticated");
+      setIsBulkImporting(false);
+      return;
+    }
+
+    let addedToRosterCount = 0;
+    const errors: string[] = [];
+
+    // Create new players (those not in allPlayers)
+    for (const name of newNames) {
+      const normalizedName = normalizePlayerName(name);
+
+      const { data: newPlayer, error: createError } = await supabase
+        .from("players")
+        .insert({
+          admin_id: user.id,
+          name: normalizedName,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        errors.push(`Failed to create "${normalizedName}": ${createError.message}`);
+        continue;
+      }
+
+      // Add new player to season roster
+      const { error: rosterError } = await supabase.from("season_players").insert({
+        season_id: seasonId,
+        player_id: newPlayer.id,
+      });
+
+      if (rosterError && rosterError.code !== "23505") {
+        // Ignore duplicate key errors (player already in roster)
+        errors.push(`Failed to add "${normalizedName}" to roster: ${rosterError.message}`);
+      } else {
+        addedToRosterCount++;
+      }
+    }
+
+    // Add existing players (duplicates) to the season roster if not already in it
+    for (const name of duplicates) {
+      const existingPlayer = findExistingPlayer(name, allPlayers);
+      if (!existingPlayer) continue;
+
+      // Skip if already in this season's roster
+      if (rosterPlayerIds.has(existingPlayer.id)) continue;
+
+      const { error: rosterError } = await supabase.from("season_players").insert({
+        season_id: seasonId,
+        player_id: existingPlayer.id,
+      });
+
+      if (rosterError && rosterError.code !== "23505") {
+        errors.push(`Failed to add "${existingPlayer.name}" to roster: ${rosterError.message}`);
+      } else if (!rosterError) {
+        addedToRosterCount++;
+      }
+    }
+
+    setIsBulkImporting(false);
+
+    if (errors.length > 0) {
+      toast.error(`Import completed with ${errors.length} error${errors.length !== 1 ? "s" : ""}`);
+      setError(errors.join("; "));
+    } else {
+      const skippedCount = duplicates.filter(
+        (name) => {
+          const player = findExistingPlayer(name, allPlayers);
+          return player && rosterPlayerIds.has(player.id);
+        }
+      ).length;
+
+      const message = skippedCount > 0
+        ? `Added ${addedToRosterCount} player${addedToRosterCount !== 1 ? "s" : ""}. ${skippedCount} duplicate${skippedCount !== 1 ? "s" : ""} skipped.`
+        : `Added ${addedToRosterCount} player${addedToRosterCount !== 1 ? "s" : ""}.`;
+
+      toast.success(message);
+    }
+
+    // Reset and close dialog
+    setBulkImportText("");
+    setIsBulkImportOpen(false);
+    router.refresh();
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -475,6 +608,20 @@ export function RosterManager({
           </Form>
         </div>
 
+        {/* Bulk import section */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">Bulk Import</h3>
+          <Button
+            variant="outline"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="w-full sm:w-auto"
+            data-testid="bulk-import-button"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Bulk Import
+          </Button>
+        </div>
+
         {/* Current roster display with collapse toggle */}
         <div className="space-y-2">
           <button
@@ -585,6 +732,107 @@ export function RosterManager({
                 disabled={removingPlayerId !== null}
               >
                 {removingPlayerId !== null ? "Removing..." : "Remove"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk import dialog */}
+        <Dialog
+          open={isBulkImportOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBulkImportText("");
+              setIsBulkImportOpen(false);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Bulk Import Players</DialogTitle>
+              <DialogDescription>
+                Paste player names, one per line or comma-separated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Paste player names, one per line or comma-separated"
+                value={bulkImportText}
+                onChange={(e) => setBulkImportText(e.target.value)}
+                className="min-h-[150px]"
+                data-testid="bulk-import-textarea"
+              />
+
+              {/* Preview section */}
+              {bulkImportPreview.parsedNames.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium" data-testid="bulk-import-preview-count">
+                    {bulkImportPreview.summary}
+                  </p>
+
+                  {/* Show parsed names preview */}
+                  <div className="max-h-[120px] overflow-y-auto rounded-md border p-2 text-sm">
+                    {bulkImportPreview.parsedNames.map((name, idx) => {
+                      const isDuplicate = bulkImportPreview.duplicates.includes(name);
+                      const existingPlayer = isDuplicate
+                        ? findExistingPlayer(name, allPlayers)
+                        : null;
+                      const isInRoster = existingPlayer
+                        ? rosterPlayerIds.has(existingPlayer.id)
+                        : false;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex items-center justify-between py-1 ${
+                            isInRoster ? "text-muted-foreground" : ""
+                          }`}
+                        >
+                          <span>{name}</span>
+                          {isDuplicate && (
+                            <span
+                              className={`text-xs ${
+                                isInRoster ? "text-muted-foreground" : "text-yellow-600"
+                              }`}
+                            >
+                              {isInRoster ? "(already in roster)" : "(exists, will add to roster)"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Warning for duplicates */}
+                  {bulkImportPreview.duplicates.length > 0 && (
+                    <Alert className="border-yellow-200 bg-yellow-50">
+                      <AlertDescription className="text-yellow-800">
+                        {bulkImportPreview.duplicates.length} player
+                        {bulkImportPreview.duplicates.length !== 1 ? "s" : ""} already exist in your
+                        player pool. They will be added to this season&apos;s roster if not already
+                        present.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBulkImportText("");
+                  setIsBulkImportOpen(false);
+                }}
+                disabled={isBulkImporting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkImport}
+                disabled={isBulkImporting || bulkImportPreview.parsedNames.length === 0}
+              >
+                {isBulkImporting ? "Importing..." : "Import Players"}
               </Button>
             </DialogFooter>
           </DialogContent>
