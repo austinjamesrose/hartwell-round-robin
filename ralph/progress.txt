@@ -234,3 +234,28 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Use `typeof window !== "undefined"` check for SSR-safe localStorage access
   - Tailwind's max-h-[2000px] with transition-all provides smooth collapse animation
 ---
+
+## 2026-01-12 05:27 CST - US-V4-011
+- What was implemented:
+  - Added getValidSwapTargets() function to src/lib/scheduling/swap.ts
+  - Enhanced schedule-viewer.tsx with complete swap selection mode UI:
+    - Selected player shows blue ring highlight (ring-2 ring-blue-500)
+    - Valid swap targets show green background (bg-green-100)
+    - Players in other rounds dimmed (opacity-50) and not clickable
+    - Cancel button in swap banner to exit swap mode
+    - Escape key listener to cancel swap mode
+  - Created comprehensive component tests for swap mode (13 tests)
+  - Added 7 tests for getValidSwapTargets function
+- Files changed:
+  - src/lib/scheduling/swap.ts (added getValidSwapTargets function)
+  - src/lib/scheduling/swap.test.ts (added 7 tests for getValidSwapTargets)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (enhanced swap UI)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.test.tsx (new - 13 tests)
+  - src/lib/pdf/exportSchedulePdf.test.ts (fixed pre-existing type error)
+- **Learnings for future iterations:**
+  - Much of the swap functionality already existed in codebase - check existing code first
+  - Use useEffect for keyboard listeners with cleanup function
+  - For visual states, compute valid targets as a Set for O(1) lookups
+  - Test Radix/shadcn components with data-testid attributes for reliable selectors
+  - Component tests need full game type (status, updated_at fields) to match database types
+---

@@ -295,7 +295,7 @@
         "Run: npm run test -- swap (all tests pass)"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "This is UI/state only. Actual swap execution in US-V4-012. Only works on draft schedules, not finalized ones."
     },
     {
