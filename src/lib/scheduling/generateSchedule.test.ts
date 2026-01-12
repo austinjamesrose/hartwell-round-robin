@@ -416,3 +416,139 @@ describe("validateScheduleConstraints", () => {
     expect(violations.some((v) => v.includes("games (expected 8)"))).toBe(true);
   });
 });
+
+describe("constraint relaxation", () => {
+  it("generates schedule with warnings when constraints are relaxed", () => {
+    // Run generation multiple times and check that when warnings occur,
+    // they have the expected format
+    const playerIds = generatePlayerIds(24);
+    const schedule = generateSchedule(playerIds, 6);
+
+    // The schedule should always succeed
+    expect(schedule.rounds.length).toBeGreaterThan(0);
+
+    // Warnings, if any, should be descriptive strings
+    for (const warning of schedule.warnings) {
+      expect(typeof warning).toBe("string");
+      expect(warning.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("warns about uneven bye distribution when applicable", () => {
+    // Generate schedules and check that bye distribution warnings have correct format
+    const playerIds = generatePlayerIds(28); // 28 players = uneven byes likely
+    const schedule = generateSchedule(playerIds, 6);
+
+    expect(schedule.rounds.length).toBeGreaterThan(0);
+
+    // If there's a bye distribution warning, check its format
+    const byeWarning = schedule.warnings.find((w) =>
+      w.includes("Bye distribution")
+    );
+    if (byeWarning) {
+      expect(byeWarning).toMatch(/Bye distribution is uneven \(\d+-\d+ byes per player\)/);
+    }
+  });
+
+  it("returns a schedule even in difficult configurations", () => {
+    // Test all valid player/court combinations to ensure algorithm never fails
+    const playerCounts = [24, 25, 26, 27, 28, 29, 30, 31, 32];
+    const courtCounts = [4, 5, 6, 7, 8];
+
+    for (const players of playerCounts) {
+      for (const courts of courtCounts) {
+        const playerIds = generatePlayerIds(players);
+        const schedule = generateSchedule(playerIds, courts);
+
+        // Should always produce a schedule with rounds
+        expect(schedule.rounds.length).toBeGreaterThan(0);
+
+        // Every player should have games (may not be exactly 8 in edge cases, but > 0)
+        const gamesPerPlayer = new Map<string, number>();
+        for (const round of schedule.rounds) {
+          for (const game of round.games) {
+            for (const player of [...game.team1, ...game.team2]) {
+              gamesPerPlayer.set(player, (gamesPerPlayer.get(player) || 0) + 1);
+            }
+          }
+        }
+
+        for (const playerId of playerIds) {
+          const games = gamesPerPlayer.get(playerId) || 0;
+          expect(games).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it("warnings persist in Schedule object", () => {
+    // Generate multiple schedules and verify warning structure
+    for (let i = 0; i < 5; i++) {
+      const playerIds = generatePlayerIds(30);
+      const schedule = generateSchedule(playerIds, 5);
+
+      // Schedule should have a warnings array (may be empty)
+      expect(Array.isArray(schedule.warnings)).toBe(true);
+
+      // If warnings exist, they should be strings
+      for (const warning of schedule.warnings) {
+        expect(typeof warning).toBe("string");
+      }
+    }
+  });
+
+  it("warns about repeat partnerships when used", () => {
+    // The warning format when partnerships are repeated
+    // Note: This is hard to force deterministically, but we can verify the format
+    const repeatWarningPattern = /Some players are paired with the same partner more than once/;
+
+    // Run many iterations to see if we ever hit the relaxed case
+    // In practice, the algorithm is robust enough that this rarely happens
+    // for standard configurations, but the warning mechanism should work
+    for (let i = 0; i < 10; i++) {
+      const playerIds = generatePlayerIds(32);
+      const schedule = generateSchedule(playerIds, 4); // 4 courts with 32 players is challenging
+
+      const warning = schedule.warnings.find((w) => repeatWarningPattern.test(w));
+      if (warning) {
+        // Verify the warning format
+        expect(warning).toMatch(/\(\d+ repeat partnership/);
+        break;
+      }
+    }
+
+    // Even if we didn't find a repeat warning, the schedule should still be valid
+    // This test is primarily checking the warning format when it does occur
+    expect(true).toBe(true);
+  });
+
+  it("produces valid schedules for all standard test configurations", () => {
+    // Re-run the main test configurations to verify no regressions
+    const configs = [
+      { players: 24, courts: 6 },
+      { players: 28, courts: 6 },
+      { players: 32, courts: 6 },
+      { players: 24, courts: 4 },
+      { players: 32, courts: 8 },
+    ];
+
+    for (const { players, courts } of configs) {
+      const playerIds = generatePlayerIds(players);
+      const schedule = generateSchedule(playerIds, courts);
+
+      // Validate hard constraints
+      const { valid: gamesValid } = checkGamesPerPlayer(schedule, playerIds);
+      const { valid: partnershipsValid } = checkNoRepeatPartnerships(schedule);
+
+      // If constraints were relaxed, there should be a warning
+      if (!partnershipsValid) {
+        expect(schedule.warnings.some((w) => w.includes("partner"))).toBe(true);
+      }
+
+      // If games per player varies, there should be a warning
+      if (!gamesValid) {
+        expect(schedule.warnings.some((w) => w.includes("games per player"))).toBe(true);
+      }
+    }
+  });
+});

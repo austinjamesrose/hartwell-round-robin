@@ -151,34 +151,56 @@ function selectActivePlayers(
 }
 
 /**
+ * Result of team formation attempt
+ */
+interface FormTeamsResult {
+  teams: [string, string][];
+  repeatPartnerships: string[]; // List of partnerships that were repeated (if relaxed)
+}
+
+/**
  * Attempts to form teams from available players
  * Each player can only partner with someone they haven't partnered with before
+ *
+ * @param players - Available player IDs
+ * @param partnerships - Set of existing partnership keys
+ * @param allowRepeatPartnerships - If true, allow repeat partnerships when no other option
+ * @returns teams and any repeat partnerships used, or null if can't form teams
  */
 function formTeams(
   players: string[],
-  partnerships: Set<string>
-): [string, string][] | null {
+  partnerships: Set<string>,
+  allowRepeatPartnerships: boolean = false
+): FormTeamsResult | null {
   const available = shuffle([...players]); // Randomize for variety
   const teams: [string, string][] = [];
+  const repeatPartnerships: string[] = [];
 
   while (available.length >= 2) {
     const player1 = available.shift()!;
 
     // Find a valid partner (someone player1 hasn't partnered with)
-    const partnerIdx = available.findIndex(
+    let partnerIdx = available.findIndex(
       (p) => !partnerships.has(partnershipKey(player1, p))
     );
 
     if (partnerIdx === -1) {
-      // No valid partner found - this attempt failed
-      return null;
+      if (allowRepeatPartnerships && available.length > 0) {
+        // Relaxed mode: allow repeat partnership
+        partnerIdx = 0; // Take the first available player
+        const key = partnershipKey(player1, available[0]);
+        repeatPartnerships.push(key);
+      } else {
+        // Strict mode: no valid partner found - this attempt failed
+        return null;
+      }
     }
 
     const player2 = available.splice(partnerIdx, 1)[0];
     teams.push([player1, player2]);
   }
 
-  return teams;
+  return { teams, repeatPartnerships };
 }
 
 /**
@@ -323,16 +345,22 @@ function getByeStats(state: ScheduleState): { min: number; max: number; variance
 
 /**
  * Attempts to generate a schedule with all constraints
+ *
+ * @param playerIds - All player IDs
+ * @param numCourts - Number of courts available
+ * @param allowRepeatPartnerships - If true, allow repeat partnerships as last resort
  */
 function attemptGeneration(
   playerIds: string[],
-  numCourts: number
+  numCourts: number,
+  allowRepeatPartnerships: boolean = false
 ): GenerationResult {
   const playersPerRound = numCourts * 4;
   const numRounds = Math.ceil((playerIds.length * GAMES_PER_PLAYER) / playersPerRound);
 
   const state = initializeState(playerIds);
   const constraintsRelaxed: string[] = [];
+  const allRepeatPartnerships: string[] = [];
 
   for (let round = 1; round <= numRounds; round++) {
     // Select which players play this round
@@ -345,15 +373,20 @@ function attemptGeneration(
     }
 
     // Form teams from active players
-    const teams = formTeams(active, state.partnerships);
+    const teamsResult = formTeams(active, state.partnerships, allowRepeatPartnerships);
 
-    if (teams === null) {
+    if (teamsResult === null) {
       // Couldn't form valid teams - constraint violation
       return { success: false, state, constraintsRelaxed };
     }
 
+    // Track any repeat partnerships used
+    if (teamsResult.repeatPartnerships.length > 0) {
+      allRepeatPartnerships.push(...teamsResult.repeatPartnerships);
+    }
+
     // Match teams into games
-    const games = matchTeams(teams, state.opponents, numCourts);
+    const games = matchTeams(teamsResult.teams, state.opponents, numCourts);
 
     // Players who were active but didn't get into a game (odd team count) become byes
     const playersInGames = new Set(
@@ -363,6 +396,13 @@ function attemptGeneration(
 
     // Update state
     updateState(state, games, finalByes, round);
+  }
+
+  // Add warnings for repeat partnerships
+  if (allRepeatPartnerships.length > 0) {
+    constraintsRelaxed.push(
+      `Some players are paired with the same partner more than once (${allRepeatPartnerships.length} repeat partnership${allRepeatPartnerships.length > 1 ? "s" : ""})`
+    );
   }
 
   const success = validateSchedule(state, playerIds);
@@ -375,6 +415,10 @@ function attemptGeneration(
 
 /**
  * Generates a weekly schedule for the given players and courts
+ *
+ * The algorithm uses a two-phase approach:
+ * 1. Phase 1 (Strict): Try to generate a schedule with no repeat partnerships
+ * 2. Phase 2 (Relaxed): If strict mode fails, allow repeat partnerships with warnings
  *
  * @param playerIds - Array of player IDs (must be 24-32 players)
  * @param numCourts - Number of courts available (4-8)
@@ -400,13 +444,46 @@ export function generateSchedule(
     throw new Error(`Courts must be 4-8, got ${numCourts}`);
   }
 
+  // Phase 1: Try strict mode (no repeat partnerships)
+  const strictResult = tryGenerateWithMode(playerIds, numCourts, false);
+  if (strictResult) {
+    return strictResult;
+  }
+
+  // Phase 2: Try relaxed mode (allow repeat partnerships)
+  const relaxedResult = tryGenerateWithMode(playerIds, numCourts, true);
+  if (relaxedResult) {
+    return relaxedResult;
+  }
+
+  // Should never get here, but return empty schedule with error
+  return {
+    rounds: [],
+    warnings: ["Failed to generate any schedule after maximum attempts"],
+  };
+}
+
+/**
+ * Attempts to generate a schedule with the given constraint mode
+ *
+ * @param playerIds - All player IDs
+ * @param numCourts - Number of courts
+ * @param allowRepeatPartnerships - Whether to allow repeat partnerships
+ * @returns Schedule if successful, null if all attempts failed
+ */
+function tryGenerateWithMode(
+  playerIds: string[],
+  numCourts: number,
+  allowRepeatPartnerships: boolean
+): Schedule | null {
   const warnings: string[] = [];
   let bestState: ScheduleState | null = null;
   let bestGamesVariance = Infinity;
+  let bestConstraintsRelaxed: string[] = [];
 
   // Try up to MAX_ATTEMPTS with different shuffles
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const result = attemptGeneration(playerIds, numCourts);
+    const result = attemptGeneration(playerIds, numCourts, allowRepeatPartnerships);
 
     if (result.success) {
       // Found a valid schedule
@@ -416,6 +493,7 @@ export function generateSchedule(
       if (byeStats.variance < bestGamesVariance) {
         bestGamesVariance = byeStats.variance;
         bestState = result.state;
+        bestConstraintsRelaxed = result.constraintsRelaxed;
       }
 
       // If bye distribution is reasonably even, use this one
@@ -428,6 +506,7 @@ export function generateSchedule(
     } else if (bestState === null || result.state.rounds.length > bestState.rounds.length) {
       // Track best partial result
       bestState = result.state;
+      bestConstraintsRelaxed = result.constraintsRelaxed;
     }
   }
 
@@ -439,12 +518,14 @@ export function generateSchedule(
         `Bye distribution is uneven (${byeStats.min}-${byeStats.max} byes per player)`
       );
     }
+    // Include any constraint relaxation warnings
+    warnings.push(...bestConstraintsRelaxed);
     return { rounds: bestState.rounds, warnings };
   }
 
-  // Failed to generate a valid schedule - return best effort with warnings
-  if (bestState) {
-    // Check what went wrong
+  // In relaxed mode, even if we couldn't get everyone to exactly 8 games,
+  // return the best effort with appropriate warnings
+  if (allowRepeatPartnerships && bestState) {
     const gamesDistribution: number[] = [];
     for (const playerId of playerIds) {
       gamesDistribution.push(bestState.gamesPlayed.get(playerId) || 0);
@@ -458,14 +539,21 @@ export function generateSchedule(
       );
     }
 
+    // Include any constraint relaxation warnings
+    warnings.push(...bestConstraintsRelaxed);
+
+    const byeStats = getByeStats(bestState);
+    if (byeStats.max - byeStats.min > 2) {
+      warnings.push(
+        `Bye distribution is uneven (${byeStats.min}-${byeStats.max} byes per player)`
+      );
+    }
+
     return { rounds: bestState.rounds, warnings };
   }
 
-  // Should never get here, but return empty schedule with error
-  return {
-    rounds: [],
-    warnings: ["Failed to generate any schedule after maximum attempts"],
-  };
+  // Could not generate a valid schedule with this mode
+  return null;
 }
 
 /**
