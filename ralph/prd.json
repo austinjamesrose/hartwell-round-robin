@@ -115,7 +115,7 @@
         "Run: npm run test -- schedule (all tests pass)"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Use existing Tooltip component from src/components/ui/tooltip.tsx"
     },
     {
