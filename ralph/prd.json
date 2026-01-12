@@ -1,0 +1,479 @@
+{
+  "project": "Hartwell Round Robin League",
+  "branchName": "ralph/hartwell-round-robin",
+  "description": "A mobile-first web application for managing a 7-week pickleball round robin league. Enables admin to schedule matches, track scores, and maintain leaderboards for 24-32 weekly players.",
+  "userStories": [
+    {
+      "id": "US-000",
+      "title": "Project Setup",
+      "description": "As a developer, I want the project scaffolded with all dependencies so that I can begin implementing features.",
+      "acceptanceCriteria": [
+        "Next.js 14+ project initialized with App Router",
+        "Tailwind CSS configured",
+        "shadcn/ui installed and configured",
+        "Supabase client configured with environment variables",
+        "Database schema applied to Supabase (all tables from Technical Considerations)",
+        "Row Level Security policies applied",
+        "jsPDF installed as dependency",
+        "TypeScript strict mode enabled",
+        "ESLint and Prettier configured",
+        "npm run dev starts without errors",
+        "npm run build completes without errors",
+        "Verify in browser: app loads at localhost:3000"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-001",
+      "title": "Admin Authentication",
+      "description": "As an admin, I want to log in so that I can manage my league.",
+      "acceptanceCriteria": [
+        "Login page with email/password via Supabase Auth",
+        "Registration flow with email confirmation",
+        "Redirect to dashboard after successful login",
+        "Session persists across browser refreshes",
+        "Logout functionality",
+        "All other routes redirect to login if unauthenticated",
+        "Unit tests pass for auth middleware (protected route logic)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: login flow works end-to-end"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create Season",
+      "description": "As an admin, I want to create a new season so that I can begin setting up the league.",
+      "acceptanceCriteria": [
+        "Form to enter: season name, start date, number of weeks (default: 7), number of courts (default: 6)",
+        "Validation: name required, start date required, weeks 1-12, courts 4-8",
+        "Season is created with status active",
+        "Week schedules auto-created for all weeks (dates calculated from start date)",
+        "Admin is redirected to the season dashboard",
+        "Unit tests pass for form validation rules",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: form submits and season appears in list"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Admin Dashboard",
+      "description": "As an admin, I want to see an overview of my seasons so that I can navigate to the one I want to manage.",
+      "acceptanceCriteria": [
+        "List of all seasons owned by this admin",
+        "Each season shows: name, start date, status, current week",
+        "Click season to enter season management view",
+        "Create Season button prominently visible",
+        "RLS verified: cannot see other admin's seasons",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: dashboard loads with season list"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Add Players to Season Roster",
+      "description": "As an admin, I want to add players to my season roster so that they can be scheduled for games.",
+      "acceptanceCriteria": [
+        "Dropdown/autocomplete to select from existing players in the admin's player pool",
+        "Option to create a new player (name input) if they don't exist",
+        "New player names are required, trimmed of whitespace",
+        "Cannot add same player to a season twice",
+        "Players appear in season roster immediately after adding",
+        "Roster displays total player count for this season",
+        "Unit tests pass for duplicate player prevention logic",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: add existing player, create new player, confirm both appear"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "View and Manage Season Roster",
+      "description": "As an admin, I want to view the roster for this season and remove players if needed.",
+      "acceptanceCriteria": [
+        "Display all players in this season's roster, alphabetically",
+        "Show total count (e.g., 35 players in this season)",
+        "Each player row has a remove from season button",
+        "If player has game history in this season, block removal (Player has 24 games recorded)",
+        "Removing a player only removes them from this season (not deleted globally)",
+        "Player names can be edited from a global player management view (not here)",
+        "Unit tests pass for game history check (blocking removal)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: view roster, remove a player without games"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005b",
+      "title": "Manage Global Player Pool",
+      "description": "As an admin, I want to manage my global pool of players across all seasons.",
+      "acceptanceCriteria": [
+        "Accessible from dashboard or settings",
+        "List all players the admin has ever created",
+        "Show which seasons each player is assigned to",
+        "Edit player names (applies across all seasons)",
+        "Players cannot be deleted (to preserve historical data)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: edit a player name, confirm it updates in season rosters"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Select Week to Manage",
+      "description": "As an admin, I want to navigate between weeks so that I can manage each week's schedule.",
+      "acceptanceCriteria": [
+        "Week navigation (tabs, dropdown, or prev/next)",
+        "Show week number, date, and status (draft/finalized/completed)",
+        "Current/active week highlighted",
+        "Can navigate to any week in the season",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: switch between weeks"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Mark Player Availability",
+      "description": "As an admin, I want to mark which players are available for a specific week so that scheduling uses the correct players.",
+      "acceptanceCriteria": [
+        "View list of all roster players for selected week",
+        "Toggle availability (checkbox or switch) for each player",
+        "Default: all players available",
+        "Show count of available players",
+        "Visual indicator if count is outside 24-32 range (warning state)",
+        "Persist availability to database",
+        "Unit tests pass for availability count validation (24-32 range)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: toggle 5 players unavailable, confirm count updates"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008a",
+      "title": "Schedule Generation Algorithm",
+      "description": "As a developer, I want a scheduling algorithm that produces valid weekly schedules so that players are automatically paired for games.",
+      "acceptanceCriteria": [
+        "Algorithm generates schedule with exactly 8 games per player (hard constraint)",
+        "No player is paired with the same partner more than once per week (hard constraint)",
+        "Opponents varied as much as possible (soft constraint)",
+        "Byes distributed as evenly as possible across players (soft constraint)",
+        "Algorithm uses the season's configured court count",
+        "Schedule generation completes in under 10 seconds",
+        "Unit tests pass for hard constraint validation (8 games per player)",
+        "Unit tests pass for partnership constraint (no repeat partners)",
+        "Unit tests pass for edge cases (24 players minimum, 32 players maximum)",
+        "Unit tests pass for various court configurations (4, 6, 8 courts)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008b",
+      "title": "Schedule Generation UI",
+      "description": "As an admin, I want to trigger schedule generation from the UI so that I can create the weekly matchups.",
+      "acceptanceCriteria": [
+        "Generate Schedule button visible on week management page",
+        "Button disabled unless 24-32 players are marked available",
+        "Disabled state shows tooltip explaining why (e.g., Need 24-32 available players)",
+        "Loading indicator while generation runs",
+        "Generated schedule displayed in round-by-round format",
+        "Schedule saved with status draft",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: generate schedule with 28 players, view all rounds"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008c",
+      "title": "Schedule Constraint Relaxation",
+      "description": "As an admin, I want the system to retry with relaxed constraints if strict generation fails so that I always get a usable schedule.",
+      "acceptanceCriteria": [
+        "If hard constraints can't be met with initial attempt, retry with relaxed soft constraints",
+        "Show warnings for any relaxed/violated constraints (e.g., Some players face the same opponent twice)",
+        "Return best-effort schedule even if soft constraints are violated",
+        "Warning messages clearly indicate which constraints were relaxed",
+        "Warnings persist with schedule and display on schedule view",
+        "Unit tests pass for constraint relaxation logic",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: with edge case player counts, confirm warnings appear if constraints relaxed"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "View Generated Schedule",
+      "description": "As an admin, I want to review the generated schedule before finalizing so that I can verify pairings look correct.",
+      "acceptanceCriteria": [
+        "Display schedule grouped by round",
+        "Each round shows: court number, Team 1 players, Team 2 players",
+        "Show which players have bye each round",
+        "Show summary: total games, games per player (should all be 8)",
+        "Highlight any constraint violations (if manual edits created them)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: schedule displays correctly with all rounds visible"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Manual Schedule Adjustments",
+      "description": "As an admin, I want to swap players in the generated schedule so that I can accommodate special requests.",
+      "acceptanceCriteria": [
+        "Click on a player in a game to select them",
+        "Click on another player (same round, different game or bye) to swap",
+        "After swap, re-validate constraints and show warnings if violated",
+        "Swap is immediately reflected in the UI",
+        "Can regenerate schedule to reset (loses manual changes)",
+        "Unit tests pass for swap validation logic",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: swap two players and confirm UI updates"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Finalize Weekly Schedule",
+      "description": "As an admin, I want to finalize the schedule so that it's locked and ready for play.",
+      "acceptanceCriteria": [
+        "Finalize button on draft schedule",
+        "Confirmation dialog with constraint violation warnings if any",
+        "Status changes from draft to finalized",
+        "Schedule becomes read-only (no more swaps)",
+        "Score entry becomes available after finalization",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: finalize and confirm status change"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011b",
+      "title": "Unfinalize Weekly Schedule",
+      "description": "As an admin, I want to unfinalize a schedule if I made a mistake, so that I can make corrections.",
+      "acceptanceCriteria": [
+        "Unfinalize button visible on finalized schedules with no scores entered",
+        "If any scores have been entered, unfinalize is blocked (Cannot unfinalize - scores already recorded)",
+        "Status reverts from finalized to draft",
+        "Manual adjustments become available again",
+        "Unit tests pass for unfinalize blocking logic (when scores exist)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: finalize then unfinalize, confirm swaps work again"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012a",
+      "title": "Score Entry UI",
+      "description": "As an admin, I want a mobile-friendly interface for entering scores so that I can quickly record game results.",
+      "acceptanceCriteria": [
+        "Score entry view displays games grouped by round",
+        "Each game shows: court, all 4 players, score inputs",
+        "Large touch-friendly number inputs (minimum 44x44px touch targets)",
+        "Inputs optimized for mobile (numeric keyboard)",
+        "Clear visual distinction between Team 1 and Team 2",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser on mobile: inputs are easy to tap"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012b",
+      "title": "Score Validation and Saving",
+      "description": "As an admin, I want score validation so that only valid pickleball scores are recorded.",
+      "acceptanceCriteria": [
+        "Score entry only available on finalized schedules (not draft)",
+        "Validation: exactly one team must score 11",
+        "Validation: other team must score 0-10",
+        "Validation: both scores required",
+        "Clear error messages for invalid scores",
+        "On valid entry, game status changes to completed",
+        "Points credited to all 4 players (each gets their team's score)",
+        "Unit tests pass for score validation rules (11-X, X-11 valid; 11-11, 10-10 invalid)",
+        "Unit tests pass for edge cases (0-11, 11-0, 10-11)",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: enter score 11-7 and confirm it saves",
+        "Verify in browser: enter invalid score 11-11 and confirm error shown"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Edit Game Scores",
+      "description": "As an admin, I want to edit a previously entered score so that I can correct mistakes.",
+      "acceptanceCriteria": [
+        "Completed games show current score and Edit option",
+        "Editing re-opens the score input fields",
+        "Same validation rules apply",
+        "Player point totals recalculated on save",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: edit an existing score and confirm update"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Mark Week Complete",
+      "description": "As an admin, I want to mark a week as complete so that it's archived.",
+      "acceptanceCriteria": [
+        "Mark Complete button visible when week is finalized",
+        "Warning if any games are missing scores",
+        "Week status changes to completed",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: complete all scores, mark complete, confirm status change"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "View Leaderboard",
+      "description": "As an admin, I want to view the current standings so that I can see player rankings.",
+      "acceptanceCriteria": [
+        "Leaderboard page/section within season view",
+        "Table columns: Rank, Player Name, Total Points, Games Played, Wins, Win %",
+        "Sorted by Total Points (primary), Win % (tiebreaker)",
+        "Tied players show same rank with T prefix (e.g., T3)",
+        "Mobile-optimized, readable table",
+        "Unit tests pass for ranking logic (sorting by points, then win %)",
+        "Unit tests pass for tie detection and T prefix display",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: view leaderboard with data from multiple weeks"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "View Player Detail",
+      "description": "As an admin, I want to see an individual player's game history so that I can review their performance.",
+      "acceptanceCriteria": [
+        "Click player name on leaderboard or roster to view detail",
+        "Shows: total points, games played, wins, win %",
+        "Game history table: Week, Partner, Opponents, Score, W/L",
+        "Sorted by most recent first",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: click player name and confirm detail page loads"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "View Historical Week Results",
+      "description": "As an admin, I want to browse past weeks' schedules and scores so that I can review history.",
+      "acceptanceCriteria": [
+        "Navigate to any completed week",
+        "Show full schedule with scores displayed",
+        "Clearly indicate completed status",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: navigate to a past week and confirm scores display"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Export Weekly Schedule PDF",
+      "description": "As an admin, I want to export the weekly schedule as a PDF so that I can print and distribute it.",
+      "acceptanceCriteria": [
+        "Export PDF button on schedule view",
+        "PDF includes: season name, week number, date",
+        "Round-by-round layout with court assignments",
+        "Bye list per round",
+        "Formatted for letter/A4 printing",
+        "Generated client-side using jsPDF",
+        "Integration test: PDF generates without errors",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: download PDF and open it"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Export Standings PDF",
+      "description": "As an admin, I want to export current standings as a PDF so that I can share them.",
+      "acceptanceCriteria": [
+        "Export PDF button on leaderboard",
+        "PDF includes: season name, Standings as of [date]",
+        "Table: Rank, Player, Total Points, Games, Wins, Win %",
+        "Generated timestamp in footer",
+        "Integration test: PDF generates without errors",
+        "TypeScript compiles without errors",
+        "ESLint passes without warnings",
+        "Verify in browser: download PDF and open it"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
