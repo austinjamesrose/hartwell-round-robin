@@ -154,7 +154,7 @@
         "Verify in browser: switch between weeks"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

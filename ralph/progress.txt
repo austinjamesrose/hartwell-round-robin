@@ -148,3 +148,23 @@ Started: 2026-01-11
   - Export types from page.tsx for client components (e.g., PlayerWithSeasons)
   - validatePlayerName() helper useful for inline edit validation
 ---
+
+## 2026-01-11 - US-006
+- Created week navigation with tabs (desktop) and prev/next buttons (mobile)
+- Week management page at /dashboard/seasons/[id]/weeks/[weekId]
+- Weeks show status (draft/finalized/completed), date, and week number
+- Active week highlighted with blue ring based on date proximity and completion status
+- Season detail page now links to week management with clickable weeks
+- "Manage Active Week" button for quick access
+- Files created:
+  - src/app/dashboard/seasons/[id]/week-navigation.tsx (client component)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+  - src/components/ui/tabs.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (weeks now clickable, imports findActiveWeekId)
+- **Learnings for future iterations:**
+  - findActiveWeekId() exported from week-navigation.tsx for reuse in server components
+  - Active week calculation: non-completed week closest to today (prefer upcoming over past)
+  - Shadcn tabs use radix-ui/react-tabs under the hood
+  - Week routes: /dashboard/seasons/[id]/weeks/[weekId]
+---
