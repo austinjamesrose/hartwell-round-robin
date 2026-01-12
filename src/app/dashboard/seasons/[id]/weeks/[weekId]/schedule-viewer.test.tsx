@@ -301,3 +301,74 @@ describe("ScheduleViewer - Swap Mode", () => {
     expect(aliceElements[0]).not.toHaveClass("cursor-pointer");
   });
 });
+
+describe("ScheduleViewer - Swap Execution (US-V4-012)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clicking valid target executes swap and updates local state", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Click Alice (p1 in round 1)
+    const aliceElements = screen.getAllByText("Alice");
+    await user.click(aliceElements[0]);
+
+    // Click Carol (p3 - valid target, opposing team)
+    const carolElements = screen.getAllByText("Carol");
+    await user.click(carolElements[0]);
+
+    // After swap, Alice and Carol should have exchanged positions
+    // The swap banner should be gone (swap mode exits)
+    expect(screen.queryByTestId("swap-banner")).not.toBeInTheDocument();
+  });
+
+  it("swap mode exits after successful swap", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Enter swap mode
+    const aliceElements = screen.getAllByText("Alice");
+    await user.click(aliceElements[0]);
+    expect(screen.getByTestId("swap-banner")).toBeInTheDocument();
+
+    // Click valid target to execute swap
+    const carolElements = screen.getAllByText("Carol");
+    await user.click(carolElements[0]);
+
+    // Swap mode should exit
+    expect(screen.queryByTestId("swap-banner")).not.toBeInTheDocument();
+  });
+
+  it("'Unsaved changes' indicator appears after swap", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Initially no unsaved changes
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+
+    // Perform a swap
+    const aliceElements = screen.getAllByText("Alice");
+    await user.click(aliceElements[0]);
+    const carolElements = screen.getAllByText("Carol");
+    await user.click(carolElements[0]);
+
+    // Unsaved changes indicator should appear
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+  });
+
+  it("Save button appears when unsaved changes exist", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Perform a swap
+    const aliceElements = screen.getAllByText("Alice");
+    await user.click(aliceElements[0]);
+    const carolElements = screen.getAllByText("Carol");
+    await user.click(carolElements[0]);
+
+    // Save Changes button should appear
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
+  });
+});

@@ -35,6 +35,7 @@ import {
 } from "@/lib/scheduling/swap";
 import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
 import { exportSchedulePdf } from "@/lib/pdf/exportSchedulePdf";
+import { toast } from "sonner";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -348,6 +349,11 @@ export function ScheduleViewer({
     setByes(updatedByes);
     setHasUnsavedChanges(true);
     setError(null);
+
+    // Show success toast with player names
+    const player1Name = getPlayerName(player1Id);
+    const player2Name = getPlayerName(player2Id);
+    toast.success(`Swapped ${player1Name} with ${player2Name}`);
 
     // Check for constraint violations across all games
     const allSwapGames: SwapGame[] = updatedGames.map((g) => ({

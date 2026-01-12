@@ -29,6 +29,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Player info for display
 interface PlayerInfo {
@@ -60,6 +68,8 @@ export function ScheduleGenerator({
   // Local schedule state for display before saving
   const [generatedSchedule, setGeneratedSchedule] = useState<Schedule | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Confirmation dialog for regenerating with existing schedule
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   // Create a map of player ID to name for display
   const playerNameMap = useMemo(() => {
@@ -94,8 +104,19 @@ export function ScheduleGenerator({
 
   const disabledReason = getDisabledReason();
 
+  // Handle click on generate button - may need confirmation
+  function handleGenerateClick() {
+    // If there's an existing schedule, show confirmation first
+    if (hasExistingSchedule) {
+      setShowRegenerateConfirm(true);
+    } else {
+      handleGenerate();
+    }
+  }
+
   // Generate the schedule (client-side)
   async function handleGenerate() {
+    setShowRegenerateConfirm(false);
     setIsGenerating(true);
     setError(null);
 
@@ -307,7 +328,7 @@ export function ScheduleGenerator({
                 {/* Wrap button in span to allow tooltip on disabled button */}
                 <span>
                   <Button
-                    onClick={handleGenerate}
+                    onClick={handleGenerateClick}
                     disabled={!canGenerate}
                     className="min-w-[140px]"
                   >
@@ -380,6 +401,30 @@ export function ScheduleGenerator({
             </div>
           </div>
         )}
+
+        {/* Regenerate confirmation dialog */}
+        <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Regenerate Schedule?</DialogTitle>
+              <DialogDescription>
+                Unsaved changes will be lost. The current schedule will be replaced
+                with a new one. Continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRegenerateConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleGenerate}>
+                Continue
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
