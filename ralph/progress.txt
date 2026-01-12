@@ -473,3 +473,19 @@ Started: 2026-01-11
   - Determine player's team from game data to get correct partner and opponents
   - Player detail routes: /dashboard/seasons/[id]/players/[playerId]
 ---
+
+## 2026-01-11 - US-017
+- Enhanced ScheduleViewer to show scores inline for completed weeks
+- Historical view shows: team names, scores (winner in green), score boxes
+- Card title changes from "Schedule" to "Results" for completed weeks
+- Hide AvailabilityManager for completed weeks (read-only historical data)
+- Hide ScoreEntry for completed weeks (scores shown inline in schedule)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+- **Learnings for future iterations:**
+  - Use conditional rendering based on weekStatus to show different UX for draft/finalized/completed
+  - getWinningTeam() helper determines which team scored 11 (winner)
+  - Completed weeks are read-only historical views - hide editing UI
+---

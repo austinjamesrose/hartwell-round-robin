@@ -441,7 +441,7 @@
         "Verify in browser: navigate to a past week and confirm scores display"
       ],
       "priority": 23,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
