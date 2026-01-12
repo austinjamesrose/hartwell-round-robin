@@ -13,6 +13,7 @@ Started: 2026-01-11
 - Auth route logic in src/lib/auth/routes.ts - testable helper functions for middleware
 - Protected routes redirect unauthenticated users to /login
 - Public routes: /, /login, /register, /auth/callback
+- Scheduling algorithm in src/lib/scheduling/generateSchedule.ts - pure function, no database dependency
 
 ---
 
@@ -190,4 +191,25 @@ Started: 2026-01-11
   - Export interface types from client components for use in server components (e.g., PlayerAvailability)
   - Use Map for local state with optimistic updates, then router.refresh() for server sync
   - Validation constants should be exported for reuse across components
+---
+
+## 2026-01-11 - US-008a
+- Implemented schedule generation algorithm in src/lib/scheduling/generateSchedule.ts
+- Greedy algorithm with shuffle + retry approach (100 attempts max)
+- Hard constraints enforced: exactly 8 games per player, no repeat partnerships
+- Soft constraints optimized: vary opponents, distribute byes evenly
+- Partnership tracking with sorted "playerA-playerB" keys in Set<string>
+- State tracking: gamesPlayed, byeCount, opponents per player
+- Configurable court count (4-8), supports 24-32 players
+- Helper functions: partnershipKey, calculateExpectedRounds, calculateByesPerRound
+- validateScheduleConstraints() for post-generation or post-edit validation
+- Files created:
+  - src/lib/scheduling/generateSchedule.ts
+  - src/lib/scheduling/generateSchedule.test.ts
+- **Learnings for future iterations:**
+  - Schedule algorithm is pure function (no database), just needs player IDs and court count
+  - Use selectActivePlayers() to prioritize players who need more games and fewer byes
+  - formTeams() returns null if no valid partners available (triggers retry)
+  - matchTeams() tries to vary opponents but doesn't fail if repeats occur
+  - Generate warnings for constraint relaxation rather than failing completely
 ---
