@@ -213,3 +213,31 @@ Started: 2026-01-11
   - matchTeams() tries to vary opponents but doesn't fail if repeats occur
   - Generate warnings for constraint relaxation rather than failing completely
 ---
+
+## 2026-01-11 - US-008b
+- Created ScheduleGenerator client component for generating weekly schedules
+- Generate Schedule button visible on week management page
+- Button disabled with tooltip when not 24-32 players available
+- Loading spinner while generation runs (uses setTimeout for UI update)
+- Generated schedule displayed in round-by-round format:
+  - Court assignments with team matchups (player names)
+  - Bye players listed per round
+  - Summary stats: total rounds, games, games/player
+- Two-step flow: Generate (preview) then Save to database
+- Saves games to `games` table, byes to `byes` table
+- Stores warnings on week record via schedule_warnings column
+- Supports regeneration (deletes existing games/byes first)
+- Added shadcn tooltip component
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-generator.tsx
+  - src/components/ui/tooltip.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (add ScheduleGenerator, fetch existing games)
+  - package.json (add @radix-ui/react-tooltip)
+- **Learnings for future iterations:**
+  - Use TooltipProvider + Tooltip + TooltipTrigger + TooltipContent for shadcn tooltips
+  - Wrap disabled buttons in <span> for tooltip to work (disabled buttons don't fire events)
+  - Use optimistic UI pattern: generate schedule client-side, display preview, then save on confirm
+  - Games table columns: week_id, round_number, court_number, team1_player1_id, team1_player2_id, etc.
+  - Byes table: week_id, round_number, player_id
+---
