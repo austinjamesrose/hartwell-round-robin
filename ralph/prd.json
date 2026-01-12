@@ -92,7 +92,7 @@
         "Run: npm run test -- roster (all tests pass)"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-V4-016 (toast infrastructure). Use existing Dialog component from src/components/ui/dialog.tsx. Use @testing-library/react for component tests."
     },
     {

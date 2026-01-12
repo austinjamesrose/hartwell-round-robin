@@ -11,6 +11,10 @@ Started: Sun Jan 11 22:25:27 CST 2026
 - Use `ilike()` for case-insensitive Supabase queries
 - Toast notifications: import `{ toast } from "sonner"` - use `toast.success()` and `toast.error()`
 - Vitest setup file at `vitest.setup.ts` imports `@testing-library/jest-dom/vitest` for matchers
+- For component tests with user interactions, install `@testing-library/user-event` and use `userEvent.setup()`
+- When mocking Supabase delete with chained `.eq()`, mock returns objects with nested `.eq()` methods
+- Use `vi.hoisted()` for mock variables used in `vi.mock()` factory functions to avoid hoisting issues
+- When testing Radix Dialog, find dialog buttons by `data-variant` attribute rather than index
 ---
 
 ## 2026-01-12 04:29 CST - US-V4-001
@@ -66,4 +70,23 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Sonner Toaster is a client component that can be added to server layout components
   - Mock sonner's Toaster in component tests to inspect props via data attributes
   - Root layout tests will show HTML nesting warnings (expected, not an error)
+---
+
+## 2026-01-12 04:47 CST - US-V4-003
+- What was implemented:
+  - Added confirmation dialog for player removal using existing Dialog component
+  - Dialog shows "Remove [Player Name] from this season's roster?"
+  - Cancel button closes dialog without action
+  - Remove button executes removal with toast.success('[Player Name] removed from roster')
+  - Added toast.error() for failed removal API calls
+  - Created comprehensive test file for roster-manager component
+- Files changed:
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added dialog state, handlers, and Dialog component)
+  - src/app/dashboard/seasons/[id]/roster-manager.test.tsx (new - 7 tests for confirmation dialog)
+  - package.json (added @testing-library/user-event)
+- **Learnings for future iterations:**
+  - Use `vi.hoisted()` for mock variables referenced in `vi.mock()` factory functions
+  - Radix Dialog portal renders outside main DOM tree; use `findByRole("dialog")` then query within
+  - Find buttons in dialog by `data-variant` attribute (e.g., `data-variant="destructive"`)
+  - Chain Supabase mocks properly: `.delete().eq().eq()` needs nested mock objects
 ---
