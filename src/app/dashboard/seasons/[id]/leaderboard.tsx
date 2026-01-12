@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -25,9 +26,7 @@ export interface LeaderboardProps {
  * Leaderboard component displaying player rankings
  * Mobile-optimized table with rank, name, points, games, wins, win%
  */
-export function Leaderboard({ seasonId: _seasonId, playerStats }: LeaderboardProps) {
-  // Note: seasonId will be used in US-016 for player detail links
-  void _seasonId;
+export function Leaderboard({ seasonId, playerStats }: LeaderboardProps) {
   // Calculate rankings from player stats
   const rankedPlayers: RankedPlayer[] = calculateRankings(playerStats);
 
@@ -96,9 +95,14 @@ export function Leaderboard({ seasonId: _seasonId, playerStats }: LeaderboardPro
                     </span>
                   </td>
 
-                  {/* Player Name - clickable for detail view (future US-016) */}
+                  {/* Player Name - clickable for detail view */}
                   <td className="px-3 py-2">
-                    <span className="font-medium">{player.playerName}</span>
+                    <Link
+                      href={`/dashboard/seasons/${seasonId}/players/${player.playerId}`}
+                      className="font-medium hover:text-blue-600 hover:underline"
+                    >
+                      {player.playerName}
+                    </Link>
                     {/* Mobile: show games/wins under name */}
                     <span className="block text-xs text-muted-foreground sm:hidden">
                       {player.gamesPlayed} games, {player.wins} wins

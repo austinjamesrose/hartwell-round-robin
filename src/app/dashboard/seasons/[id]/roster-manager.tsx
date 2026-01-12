@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -296,7 +297,12 @@ export function RosterManager({
                       key={player.id}
                       className="flex items-center justify-between rounded-lg border p-2"
                     >
-                      <span>{player.name}</span>
+                      <Link
+                        href={`/dashboard/seasons/${seasonId}/players/${player.id}`}
+                        className="hover:text-blue-600 hover:underline"
+                      >
+                        {player.name}
+                      </Link>
                       <div className="flex items-center gap-2">
                         {!removalCheck.canRemove && (
                           <span className="text-xs text-muted-foreground">
