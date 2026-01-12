@@ -76,3 +76,18 @@ Started: 2026-01-11
   - `notFound()` from Next.js needs `return notFound()` for proper TypeScript control flow narrowing
   - Season routes: /dashboard/seasons/new (create), /dashboard/seasons/[id] (view)
 ---
+
+## 2026-01-11 - US-003
+- Updated dashboard to display all seasons owned by the admin
+- Each season shows: name, start date, status (active/completed/archived), current week
+- Seasons are clickable cards that navigate to /dashboard/seasons/[id]
+- Added prominent "Create New Season" button at top of dashboard
+- getCurrentWeek() helper calculates which week is active based on today's date
+- Files modified:
+  - src/app/dashboard/page.tsx (complete rewrite with season list)
+  - src/types/database.ts (added Relationships for seasons/weeks join)
+- **Learnings for future iterations:**
+  - Supabase join queries with `select('*, weeks(*)')` require relationship types defined in database.ts
+  - Use `as unknown as Type` for intermediate casting when Supabase types don't match actual runtime structure
+  - RLS is already enforced on seasons table via `auth.uid() = admin_id` policy - no additional code needed
+---

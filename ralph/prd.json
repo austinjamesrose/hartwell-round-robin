@@ -79,7 +79,7 @@
         "Verify in browser: dashboard loads with season list"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
