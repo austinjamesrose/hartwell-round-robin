@@ -322,3 +322,21 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Supabase error code "23505" is unique constraint violation (duplicate key)
   - findExistingPlayer helper allows looking up existing player by name for roster membership check
 ---
+
+## 2026-01-12 05:41 CST - US-V4-015
+- What was implemented:
+  - Created `PasswordRequirements` component with real-time validation indicators
+  - Added `validatePasswordRequirements()` function checking: minLength (8+), hasUppercase, hasLowercase, hasNumber
+  - Added `getPasswordStrength()` function returning weak (<8), medium (8-12), or strong (12+)
+  - Used Check (green) and Circle (gray) icons from lucide-react for requirement indicators
+  - Integrated component below password field on registration page
+  - Created comprehensive test file with 22 tests covering validation logic and component rendering
+- Files changed:
+  - src/app/register/PasswordRequirements.tsx (new - validation component)
+  - src/app/register/PasswordRequirements.test.tsx (new - 22 tests)
+  - src/app/register/page.tsx (imported and added PasswordRequirements to password field)
+- **Learnings for future iterations:**
+  - Password validation requirements should match the zod schema in the form (8 chars, uppercase, lowercase, number)
+  - Use data-testid for icons to reliably query in tests (lucide icons don't have predictable accessible names)
+  - The registration page already has a controlled form via react-hook-form, so real-time validation works via field.value
+---
