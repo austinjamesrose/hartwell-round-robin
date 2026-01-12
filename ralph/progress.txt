@@ -8,7 +8,11 @@ Started: 2026-01-11
 - UI components from shadcn/ui in src/components/ui/
 - Use `npm run lint` to check ESLint (must pass with 0 errors/warnings)
 - Use `npm run build` to verify TypeScript and production build
+- Use `npm run test` to run vitest unit tests
 - Environment variables in .env.local (copy from .env.local.example)
+- Auth route logic in src/lib/auth/routes.ts - testable helper functions for middleware
+- Protected routes redirect unauthenticated users to /login
+- Public routes: /, /login, /register, /auth/callback
 
 ---
 
@@ -24,4 +28,30 @@ Started: 2026-01-11
   - Tailwind v4 with oklch colors in globals.css
   - Database schema in supabase/schema.sql ready to apply to Supabase
   - ESLint configured via eslint.config.mjs (flat config format)
+---
+
+## 2026-01-11 - US-001
+- Implemented complete authentication flow with Supabase Auth
+- Login page with email/password form and zod validation
+- Registration page with email confirmation flow
+- Auth callback route handler for email verification (/auth/callback)
+- Root middleware for protected routes (redirects unauthenticated to /login)
+- Dashboard page as authenticated landing with logout button
+- Added vitest for unit testing
+- Files created:
+  - src/app/login/page.tsx
+  - src/app/register/page.tsx
+  - src/app/auth/callback/route.ts
+  - src/app/dashboard/page.tsx
+  - src/app/dashboard/logout-button.tsx
+  - src/lib/auth/routes.ts
+  - src/lib/auth/routes.test.ts
+  - middleware.ts
+  - vitest.config.ts
+- **Learnings for future iterations:**
+  - Extract testable logic from middleware into separate modules (src/lib/auth/routes.ts pattern)
+  - react-hook-form with zod resolver for form validation (@hookform/resolvers)
+  - Supabase auth uses exchangeCodeForSession for email confirmation
+  - Authenticated users redirected from /login and /register to /dashboard
+  - Session persists via Supabase SSR cookies automatically
 ---

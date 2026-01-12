@@ -42,7 +42,7 @@
         "Verify in browser: login flow works end-to-end"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
