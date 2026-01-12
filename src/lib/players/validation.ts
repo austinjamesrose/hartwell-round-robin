@@ -43,3 +43,35 @@ export function validatePlayerName(name: string): string {
   }
   return trimmed;
 }
+
+/**
+ * Result of checking if a player can be removed from a season
+ */
+export interface PlayerRemovalCheck {
+  canRemove: boolean;
+  gameCount: number;
+  message: string;
+}
+
+/**
+ * Check if a player can be removed from a season based on game history.
+ * A player cannot be removed if they have any recorded games in the season.
+ *
+ * @param gameCount - Number of games the player has in this season
+ * @returns Object with canRemove flag, gameCount, and message
+ */
+export function checkPlayerRemoval(gameCount: number): PlayerRemovalCheck {
+  if (gameCount > 0) {
+    return {
+      canRemove: false,
+      gameCount,
+      message: `Player has ${gameCount} game${gameCount !== 1 ? "s" : ""} recorded`,
+    };
+  }
+
+  return {
+    canRemove: true,
+    gameCount: 0,
+    message: "Player can be removed from this season",
+  };
+}

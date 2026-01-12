@@ -4,6 +4,7 @@ import {
   addPlayerToSeasonSchema,
   isPlayerInSeason,
   validatePlayerName,
+  checkPlayerRemoval,
 } from "./validation";
 
 describe("newPlayerSchema", () => {
@@ -81,5 +82,36 @@ describe("validatePlayerName", () => {
 
   it("throws error for whitespace-only string", () => {
     expect(() => validatePlayerName("   ")).toThrow("Player name cannot be empty");
+  });
+});
+
+describe("checkPlayerRemoval", () => {
+  it("allows removal when player has no games", () => {
+    const result = checkPlayerRemoval(0);
+    expect(result.canRemove).toBe(true);
+    expect(result.gameCount).toBe(0);
+    expect(result.message).toBe("Player can be removed from this season");
+  });
+
+  it("blocks removal when player has 1 game", () => {
+    const result = checkPlayerRemoval(1);
+    expect(result.canRemove).toBe(false);
+    expect(result.gameCount).toBe(1);
+    expect(result.message).toBe("Player has 1 game recorded");
+  });
+
+  it("blocks removal when player has multiple games", () => {
+    const result = checkPlayerRemoval(24);
+    expect(result.canRemove).toBe(false);
+    expect(result.gameCount).toBe(24);
+    expect(result.message).toBe("Player has 24 games recorded");
+  });
+
+  it("uses correct singular/plural for game count", () => {
+    // Singular for 1 game
+    expect(checkPlayerRemoval(1).message).toBe("Player has 1 game recorded");
+    // Plural for 0, 2, or more games
+    expect(checkPlayerRemoval(2).message).toBe("Player has 2 games recorded");
+    expect(checkPlayerRemoval(8).message).toBe("Player has 8 games recorded");
   });
 });

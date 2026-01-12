@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   newPlayerSchema,
   type NewPlayerFormValues,
+  checkPlayerRemoval,
 } from "@/lib/players/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,17 +45,21 @@ interface RosterManagerProps {
   allPlayers: Player[];
   // Players already in this season's roster
   rosterPlayers: Player[];
+  // Map of player ID to game count in this season
+  playerGameCounts: Record<string, number>;
 }
 
 export function RosterManager({
   seasonId,
   allPlayers,
   rosterPlayers,
+  playerGameCounts,
 }: RosterManagerProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isAddingExisting, setIsAddingExisting] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
 
   // Create a Set of player IDs already in the roster for quick lookup
@@ -163,6 +168,38 @@ export function RosterManager({
     setIsCreatingNew(false);
   }
 
+  // Remove a player from the season roster
+  async function handleRemovePlayer(playerId: string) {
+    // Check if player has game history
+    const gameCount = playerGameCounts[playerId] || 0;
+    const removalCheck = checkPlayerRemoval(gameCount);
+
+    if (!removalCheck.canRemove) {
+      setError(removalCheck.message);
+      return;
+    }
+
+    setRemovingPlayerId(playerId);
+    setError(null);
+
+    const supabase = createClient();
+
+    const { error: deleteError } = await supabase
+      .from("season_players")
+      .delete()
+      .eq("season_id", seasonId)
+      .eq("player_id", playerId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      setRemovingPlayerId(null);
+      return;
+    }
+
+    router.refresh();
+    setRemovingPlayerId(null);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -249,14 +286,40 @@ export function RosterManager({
             <div className="space-y-1">
               {rosterPlayers
                 .sort((a, b) => a.name.localeCompare(b.name))
-                .map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between rounded-lg border p-2"
-                  >
-                    <span>{player.name}</span>
-                  </div>
-                ))}
+                .map((player) => {
+                  const gameCount = playerGameCounts[player.id] || 0;
+                  const removalCheck = checkPlayerRemoval(gameCount);
+                  const isRemoving = removingPlayerId === player.id;
+
+                  return (
+                    <div
+                      key={player.id}
+                      className="flex items-center justify-between rounded-lg border p-2"
+                    >
+                      <span>{player.name}</span>
+                      <div className="flex items-center gap-2">
+                        {!removalCheck.canRemove && (
+                          <span className="text-xs text-muted-foreground">
+                            {removalCheck.message}
+                          </span>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemovePlayer(player.id)}
+                          disabled={!removalCheck.canRemove || isRemoving}
+                          title={
+                            removalCheck.canRemove
+                              ? "Remove from season"
+                              : removalCheck.message
+                          }
+                        >
+                          {isRemoving ? "Removing..." : "Remove"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

@@ -84,6 +84,37 @@ export default async function SeasonDetailPage({
   const rosterPlayers: Player[] =
     seasonPlayersData?.map((sp) => sp.players as unknown as Player) ?? [];
 
+  // Get game counts for each player in this season
+  // A player appears in games as team1_player1, team1_player2, team2_player1, or team2_player2
+  // We need to count games from weeks that belong to this season
+  const playerGameCounts: Record<string, number> = {};
+
+  // Get all week IDs for this season
+  const weekIds = weeks.map((w) => w.id);
+
+  if (weekIds.length > 0 && rosterPlayers.length > 0) {
+    // Fetch all games from this season's weeks
+    const { data: gamesData } = await supabase
+      .from("games")
+      .select("team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id")
+      .in("week_id", weekIds);
+
+    // Count games for each player
+    if (gamesData) {
+      for (const game of gamesData) {
+        const playerIds = [
+          game.team1_player1_id,
+          game.team1_player2_id,
+          game.team2_player1_id,
+          game.team2_player2_id,
+        ];
+        for (const playerId of playerIds) {
+          playerGameCounts[playerId] = (playerGameCounts[playerId] || 0) + 1;
+        }
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen p-4">
       <div className="mx-auto max-w-4xl">
@@ -113,6 +144,7 @@ export default async function SeasonDetailPage({
             seasonId={id}
             allPlayers={allPlayers}
             rosterPlayers={rosterPlayers}
+            playerGameCounts={playerGameCounts}
           />
 
           {/* Week Schedule */}
