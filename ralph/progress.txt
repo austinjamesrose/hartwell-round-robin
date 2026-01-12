@@ -262,3 +262,23 @@ Started: 2026-01-11
   - The algorithm is robust enough that relaxation rarely triggers for normal configs (24-32 players, 4-8 courts)
   - When testing constraint relaxation, need to run multiple iterations since algorithm is probabilistic
 ---
+
+## 2026-01-11 - US-009
+- Created ScheduleViewer component for displaying saved schedules from database
+- Fetches games and byes from database, groups by round for display
+- Each round shows: court number, Team 1 players (names), Team 2 players (names)
+- Bye players listed per round
+- Summary stats: total rounds, total games, games per player
+- Games-per-player breakdown with constraint violation highlighting (players not at 8 games highlighted in yellow)
+- Schedule warnings displayed in the ScheduleViewer component (consolidated UI)
+- ScheduleGenerator only shown for draft weeks now
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (fetch games/byes, add ScheduleViewer)
+- **Learnings for future iterations:**
+  - Use `details` HTML element for collapsible sections (games per player breakdown)
+  - Games table has round_number and court_number for ordering
+  - The byes table stores round-by-round bye assignments (week_id, round_number, player_id)
+  - ScheduleViewer returns null when no games exist (graceful empty state)
+---
