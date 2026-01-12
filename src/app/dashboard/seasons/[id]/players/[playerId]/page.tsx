@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { calculateWinPercentage, formatWinPercentage } from "@/lib/leaderboard/ranking";
+import { formatDate } from "@/lib/dates/dateUtils";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Player = Database["public"]["Tables"]["players"]["Row"];
@@ -29,15 +30,6 @@ interface GameHistoryEntry {
   playerScore: number;
   opponentScore: number;
   isWin: boolean;
-}
-
-// Format date for display (e.g., "Jan 15")
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export default async function PlayerDetailPage({
@@ -305,7 +297,7 @@ export default async function PlayerDetailPage({
                               Week {entry.weekNumber}
                             </span>
                             <span className="block text-xs text-muted-foreground">
-                              {formatDate(entry.weekDate)}
+                              {formatDate(entry.weekDate, { includeYear: false })}
                             </span>
                           </td>
 

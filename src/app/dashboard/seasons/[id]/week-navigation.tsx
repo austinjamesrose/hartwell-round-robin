@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { findActiveWeekId, type Week } from "./week-utils";
+import { formatDate, parseDateString } from "@/lib/dates/dateUtils";
 
 interface WeekNavigationProps {
   seasonId: string;
@@ -12,20 +13,16 @@ interface WeekNavigationProps {
   currentWeekId: string;
 }
 
-// Format date for compact display (e.g., "1/15")
+// Format date for compact display (e.g., "1/15") - timezone-safe
 function formatDateCompact(dateString: string): string {
-  const date = new Date(dateString);
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  const parsed = parseDateString(dateString);
+  if (!parsed) return dateString;
+  return `${parsed.month}/${parsed.day}`;
 }
 
-// Format date for full display (e.g., "January 15, 2026")
+// Format date for full display (e.g., "January 15, 2026") - timezone-safe
 function formatDateFull(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDate(dateString, { monthFormat: "long" });
 }
 
 // Get status color classes

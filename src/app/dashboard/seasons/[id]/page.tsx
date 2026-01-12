@@ -14,21 +14,12 @@ import { findActiveWeekId } from "./week-utils";
 import { Leaderboard } from "./leaderboard";
 import { Button } from "@/components/ui/button";
 import type { PlayerStats } from "@/lib/leaderboard/ranking";
+import { formatDate } from "@/lib/dates/dateUtils";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
 type Player = Database["public"]["Tables"]["players"]["Row"];
 type Game = Database["public"]["Tables"]["games"]["Row"];
-
-// Format date for display (e.g., "Jan 15, 2026")
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default async function SeasonDetailPage({
   params,

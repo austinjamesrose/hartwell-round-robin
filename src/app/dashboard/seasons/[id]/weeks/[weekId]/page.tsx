@@ -18,20 +18,11 @@ import { ScheduleGenerator } from "./schedule-generator";
 import { ScheduleViewer } from "./schedule-viewer";
 import { ScoreEntry } from "./score-entry";
 import { countGamesWithScores } from "@/lib/weeks/validation";
+import { formatDate } from "@/lib/dates/dateUtils";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
 type Player = Database["public"]["Tables"]["players"]["Row"];
-
-// Format date for display (e.g., "Jan 15, 2026")
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default async function WeekManagementPage({
   params,

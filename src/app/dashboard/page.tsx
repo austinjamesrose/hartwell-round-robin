@@ -11,22 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "./logout-button";
+import { formatDate } from "@/lib/dates/dateUtils";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
 
 // Season with its weeks for computing current week
 type SeasonWithWeeks = Season & { weeks: Week[] };
-
-// Format date for display (e.g., "Jan 15, 2026")
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 // Calculate the current/active week for a season based on today's date
 // Returns the week number (1-indexed) or null if no weeks exist

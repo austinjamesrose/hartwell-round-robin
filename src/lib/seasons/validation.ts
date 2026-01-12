@@ -43,37 +43,9 @@ export const createSeasonDefaults: CreateSeasonFormValues = {
   numCourts: 6,
 };
 
-/**
- * Calculates the dates for each week of a season.
- * Each week is 7 days after the previous week.
- *
- * @param startDate - The start date of the season (YYYY-MM-DD format)
- * @param numWeeks - The number of weeks in the season
- * @returns An array of objects containing week number and date
- */
-export function calculateWeekDates(
-  startDate: string,
-  numWeeks: number
-): { weekNumber: number; date: string }[] {
-  const weeks: { weekNumber: number; date: string }[] = [];
-  const start = new Date(startDate);
-
-  for (let i = 0; i < numWeeks; i++) {
-    // Calculate date for this week (i weeks after start)
-    const weekDate = new Date(start);
-    weekDate.setDate(weekDate.getDate() + i * 7);
-
-    // Format as YYYY-MM-DD for database storage
-    const formattedDate = weekDate.toISOString().split("T")[0];
-
-    weeks.push({
-      weekNumber: i + 1,
-      date: formattedDate,
-    });
-  }
-
-  return weeks;
-}
+// Re-export calculateWeekDates from dateUtils for backwards compatibility
+// The original implementation had timezone bugs - the new one is timezone-safe
+export { calculateWeekDates } from "@/lib/dates/dateUtils";
 
 /**
  * Result of validating a season name for uniqueness.

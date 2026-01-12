@@ -322,7 +322,8 @@ describe("calculateWeekDates", () => {
     expect(weeks[0].weekNumber).toBe(1);
     expect(weeks[11].weekNumber).toBe(12);
     // Week 12 should be 11*7 = 77 days after start
-    expect(weeks[11].date).toBe("2026-03-18");
+    // Jan 1 + 77 days = March 19 (corrected from March 18 - old test had timezone bug)
+    expect(weeks[11].date).toBe("2026-03-19");
   });
 });
 
