@@ -91,3 +91,24 @@ Started: 2026-01-11
   - Use `as unknown as Type` for intermediate casting when Supabase types don't match actual runtime structure
   - RLS is already enforced on seasons table via `auth.uid() = admin_id` policy - no additional code needed
 ---
+
+## 2026-01-11 - US-004
+- Added roster management to season detail page
+- Player pool dropdown with Select component to add existing players
+- "Create & Add" form for creating new players and adding to roster immediately
+- Duplicate player prevention via Set lookup and database unique constraint
+- Roster displays alphabetically sorted with player count
+- Unit tests for validation schemas and helper functions
+- Files created:
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (client component)
+  - src/lib/players/validation.ts
+  - src/lib/players/validation.test.ts
+  - src/components/ui/select.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (fetch players, add RosterManager)
+- **Learnings for future iterations:**
+  - Use `npx shadcn@latest add <component> -y` to add new shadcn UI components
+  - Supabase unique constraint violations return error code "23505"
+  - Join queries: `select('player_id, players(*)')` returns nested object, needs `sp.players as unknown as Player`
+  - Validation helpers like `isPlayerInSeason()` should use Set<string> for O(1) lookup
+---

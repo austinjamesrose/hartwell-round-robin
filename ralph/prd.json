@@ -99,7 +99,7 @@
         "Verify in browser: add existing player, create new player, confirm both appear"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
