@@ -193,3 +193,24 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Tailwind responsive classes: md:hidden (show on mobile only), hidden md:block (show on desktop only)
   - For client components imported into server components, mark with "use client" directive
 ---
+
+## 2026-01-12 05:14 CST - US-V4-009
+- What was implemented:
+  - Created filter utility functions in src/lib/games/filters.ts
+  - filterGamesByRound() returns games from specific round, sorted by court
+  - filterGamesByCourt() returns games from specific court, sorted by round
+  - getFilterSummary() shows "Showing X games | Y of X completed"
+  - getDefaultFilterState() defaults to "By Round" with Round 1 selected
+  - Added filter UI to score-entry.tsx with toggle and dropdown
+  - Summary text shows filtered game count and completion status
+- Files changed:
+  - src/lib/games/filters.ts (new - filter utility functions)
+  - src/lib/games/filters.test.ts (new - 18 tests for filter functions)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx (added filter UI)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.test.tsx (new - 11 tests for component)
+- **Learnings for future iterations:**
+  - Extract filter logic to pure functions for easy testing (filterGamesByRound, filterGamesByCourt)
+  - Use data-testid for elements that need to be queried by test but might have duplicate text content
+  - When testing components with duplicate text, use getByTestId or getAllByText instead of getByText
+  - Game filtering: sort by court_number when filtering by round, sort by round_number when filtering by court
+---
