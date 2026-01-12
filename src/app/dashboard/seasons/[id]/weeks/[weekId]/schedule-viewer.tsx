@@ -32,7 +32,7 @@ import {
   checkSwapViolations,
   type SwapGame,
 } from "@/lib/scheduling/swap";
-import { canUnfinalizeWeek } from "@/lib/weeks/validation";
+import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -109,12 +109,19 @@ export function ScheduleViewer({
   const [showUnfinalizeDialog, setShowUnfinalizeDialog] = useState(false);
   const [isUnfinalizing, setIsUnfinalizing] = useState(false);
 
+  // Mark Complete dialog state
+  const [showMarkCompleteDialog, setShowMarkCompleteDialog] = useState(false);
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+
   // Can edit only in draft mode
   const canEdit = weekStatus === "draft";
 
   // Check if unfinalize is allowed
   const unfinalizeResult = canUnfinalizeWeek(gamesWithScoresCount);
   const canUnfinalize = weekStatus === "finalized" && unfinalizeResult.canUnfinalize;
+
+  // Check if week can be marked as complete
+  const markCompleteResult = canMarkWeekComplete(weekStatus, games.length, gamesWithScoresCount);
 
   // Create player name lookup map
   const playerNameMap = useMemo(() => {
@@ -418,6 +425,32 @@ export function ScheduleViewer({
     }
   }
 
+  // Mark the week as complete (change week status from finalized to completed)
+  async function handleMarkComplete() {
+    setIsMarkingComplete(true);
+    setError(null);
+
+    const supabase = createClient();
+
+    try {
+      const { error: updateError } = await supabase
+        .from("weeks")
+        .update({ status: "completed" })
+        .eq("id", weekId);
+
+      if (updateError) {
+        throw new Error(`Failed to mark week complete: ${updateError.message}`);
+      }
+
+      setShowMarkCompleteDialog(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mark week complete");
+    } finally {
+      setIsMarkingComplete(false);
+    }
+  }
+
   // Check if a player is selected
   function isPlayerSelected(roundNumber: number, playerId: string): boolean {
     return (
@@ -663,9 +696,9 @@ export function ScheduleViewer({
           </div>
         )}
 
-        {/* Unfinalize button (only for finalized schedules with no scores) */}
+        {/* Unfinalize and Mark Complete buttons (for finalized schedules) */}
         {weekStatus === "finalized" && (
-          <div className="border-t pt-4 mt-4">
+          <div className="border-t pt-4 mt-4 flex flex-wrap gap-3">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -687,6 +720,14 @@ export function ScheduleViewer({
                 )}
               </Tooltip>
             </TooltipProvider>
+
+            {/* Mark Complete button */}
+            <Button
+              onClick={() => setShowMarkCompleteDialog(true)}
+              className="w-full sm:w-auto"
+            >
+              Mark Week Complete
+            </Button>
           </div>
         )}
 
@@ -760,6 +801,54 @@ export function ScheduleViewer({
                 disabled={isUnfinalizing}
               >
                 {isUnfinalizing ? "Unfinalizing..." : "Unfinalize Schedule"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Mark Complete confirmation dialog */}
+        <Dialog open={showMarkCompleteDialog} onOpenChange={setShowMarkCompleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mark Week Complete?</DialogTitle>
+              <DialogDescription>
+                This will archive the week and mark it as completed. The week
+                will remain visible for viewing historical results.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Show warning if games are missing scores */}
+            {markCompleteResult.hasMissingScores && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertDescription className="text-yellow-800">
+                  <p className="font-medium">
+                    {markCompleteResult.missingScoresCount}{" "}
+                    {markCompleteResult.missingScoresCount === 1
+                      ? "game is"
+                      : "games are"}{" "}
+                    missing scores.
+                  </p>
+                  <p className="mt-1 text-sm">
+                    You can still mark this week complete, but the missing
+                    scores will not be recorded.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowMarkCompleteDialog(false)}
+                disabled={isMarkingComplete}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleMarkComplete}
+                disabled={isMarkingComplete}
+              >
+                {isMarkingComplete ? "Completing..." : "Mark Complete"}
               </Button>
             </DialogFooter>
           </DialogContent>

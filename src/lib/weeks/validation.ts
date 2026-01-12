@@ -42,3 +42,68 @@ export function countGamesWithScores(
     (game) => game.team1_score !== null && game.team2_score !== null
   ).length;
 }
+
+/**
+ * Counts how many games are missing scores
+ * A game is missing a score if team1_score or team2_score is null
+ *
+ * @param games - Array of games with score fields
+ * @returns Number of games missing scores
+ */
+export function countGamesMissingScores(
+  games: { team1_score: number | null; team2_score: number | null }[]
+): number {
+  return games.filter(
+    (game) => game.team1_score === null || game.team2_score === null
+  ).length;
+}
+
+/**
+ * Checks if a week can be marked as complete
+ * A week can be marked complete if it is finalized (not draft)
+ *
+ * @param weekStatus - Current status of the week
+ * @param totalGames - Total number of games in the week
+ * @param gamesWithScoresCount - Number of games that have scores entered
+ * @returns Object with canMarkComplete boolean, hasMissingScores flag, and counts
+ */
+export function canMarkWeekComplete(
+  weekStatus: "draft" | "finalized" | "completed",
+  totalGames: number,
+  gamesWithScoresCount: number
+): {
+  canMarkComplete: boolean;
+  hasMissingScores: boolean;
+  missingScoresCount: number;
+  errorMessage: string | null;
+} {
+  // Can only mark complete if week is finalized
+  if (weekStatus === "draft") {
+    return {
+      canMarkComplete: false,
+      hasMissingScores: false,
+      missingScoresCount: 0,
+      errorMessage: "Cannot mark complete - week must be finalized first",
+    };
+  }
+
+  if (weekStatus === "completed") {
+    return {
+      canMarkComplete: false,
+      hasMissingScores: false,
+      missingScoresCount: 0,
+      errorMessage: "Week is already complete",
+    };
+  }
+
+  const missingScoresCount = totalGames - gamesWithScoresCount;
+  const hasMissingScores = missingScoresCount > 0;
+
+  // Week can be marked complete even with missing scores (just show warning)
+  return {
+    canMarkComplete: true,
+    hasMissingScores,
+    missingScoresCount,
+    errorMessage: null,
+  };
+}
