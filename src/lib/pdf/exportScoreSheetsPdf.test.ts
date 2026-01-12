@@ -163,8 +163,8 @@ describe("exportScoreSheetsPdf", () => {
     expect(typeof result.save).toBe("function");
   });
 
-  it("has correct number of pages (one per round)", () => {
-    // Mock 2 pages for 2 rounds
+  it("has correct number of pages (one per court)", () => {
+    // Mock 2 pages for 2 courts
     mockFns.getNumberOfPages.mockReturnValue(2);
 
     exportScoreSheetsPdf({
@@ -177,7 +177,7 @@ describe("exportScoreSheetsPdf", () => {
       players: samplePlayers,
     });
 
-    // Should call addPage once (for the second round)
+    // Should call addPage once (for the second court)
     expect(mockFns.addPage).toHaveBeenCalledTimes(1);
   });
 
@@ -221,7 +221,7 @@ describe("exportScoreSheetsPdf", () => {
     );
   });
 
-  it("renders round headers on each page", () => {
+  it("renders court headers on each page", () => {
     mockFns.getNumberOfPages.mockReturnValue(2);
 
     exportScoreSheetsPdf({
@@ -234,33 +234,7 @@ describe("exportScoreSheetsPdf", () => {
       players: samplePlayers,
     });
 
-    // Verify round headers are written
-    expect(mockFns.text).toHaveBeenCalledWith(
-      "Round 1",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object)
-    );
-    expect(mockFns.text).toHaveBeenCalledWith(
-      "Round 2",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object)
-    );
-  });
-
-  it("renders court numbers for each game", () => {
-    exportScoreSheetsPdf({
-      scheduleInfo: {
-        seasonName: "Test Season",
-        weekNumber: 1,
-        weekDate: "Jan 1, 2026",
-      },
-      games: sampleGamesRound1,
-      players: samplePlayers,
-    });
-
-    // Verify court numbers are in the output
+    // Verify court headers are written (one per page)
     expect(mockFns.text).toHaveBeenCalledWith(
       "Court 1",
       expect.any(Number),
@@ -269,6 +243,32 @@ describe("exportScoreSheetsPdf", () => {
     );
     expect(mockFns.text).toHaveBeenCalledWith(
       "Court 2",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
+  });
+
+  it("renders round numbers for each game box", () => {
+    exportScoreSheetsPdf({
+      scheduleInfo: {
+        seasonName: "Test Season",
+        weekNumber: 1,
+        weekDate: "Jan 1, 2026",
+      },
+      games: sampleGamesMultiRound,
+      players: samplePlayers,
+    });
+
+    // Verify round numbers are in the game boxes
+    expect(mockFns.text).toHaveBeenCalledWith(
+      "Round 1",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
+    expect(mockFns.text).toHaveBeenCalledWith(
+      "Round 2",
       expect.any(Number),
       expect.any(Number),
       expect.any(Object)

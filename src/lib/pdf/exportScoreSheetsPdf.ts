@@ -53,28 +53,28 @@ function getPlayerName(playerId: string, playerMap: Map<string, string>): string
   return playerMap.get(playerId) || "Unknown";
 }
 
-// Group games by round
-interface RoundData {
-  roundNumber: number;
+// Group games by court (for printing one sheet per court)
+interface CourtData {
+  courtNumber: number;
   games: Game[];
 }
 
-function groupByRound(games: Game[]): RoundData[] {
-  // Find all unique round numbers
-  const roundNumbers = new Set<number>();
+function groupByCourt(games: Game[]): CourtData[] {
+  // Find all unique court numbers
+  const courtNumbers = new Set<number>();
   for (const game of games) {
-    roundNumbers.add(game.round_number);
+    courtNumbers.add(game.court_number);
   }
 
-  // Sort round numbers
-  const sortedRounds = Array.from(roundNumbers).sort((a, b) => a - b);
+  // Sort court numbers
+  const sortedCourts = Array.from(courtNumbers).sort((a, b) => a - b);
 
-  // Build round data
-  return sortedRounds.map((roundNumber) => ({
-    roundNumber,
+  // Build court data - each court gets all rounds played on it, sorted by round
+  return sortedCourts.map((courtNumber) => ({
+    courtNumber,
     games: games
-      .filter((g) => g.round_number === roundNumber)
-      .sort((a, b) => a.court_number - b.court_number),
+      .filter((g) => g.court_number === courtNumber)
+      .sort((a, b) => a.round_number - b.round_number),
   }));
 }
 
@@ -99,16 +99,19 @@ export function generateCourtBox(
 }
 
 /**
- * Generate a PDF with score sheets for each round.
- * One page per round, with court boxes for scorekeeping.
+ * Generate a PDF with score sheets organized by court.
+ * One page per court, with round boxes for scorekeeping.
  * Formatted for letter (8.5x11") landscape paper.
+ *
+ * This organization allows admins to print and place one sheet at each court,
+ * where players can self-report scores for all rounds played at that court.
  *
  * Returns the jsPDF instance for testing, and triggers download.
  */
 export function exportScoreSheetsPdf(data: ExportScoreSheetsData): jsPDF {
   const { scheduleInfo, games, players } = data;
   const playerMap = createPlayerNameMap(players);
-  const rounds = groupByRound(games);
+  const courts = groupByCourt(games);
 
   // Create PDF document (landscape, letter size)
   const doc = new jsPDF({
@@ -122,19 +125,33 @@ export function exportScoreSheetsPdf(data: ExportScoreSheetsData): jsPDF {
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 40; // 40pt margin (~0.55 inches)
 
-  // Court box dimensions
-  const boxWidth = (pageWidth - margin * 2 - 30) / 3; // 3 columns with gaps
-  const boxHeight = 170; // Height for each court box
-  const columnGap = 15;
-  const rowGap = 15;
+  // Calculate available height for content area
+  // Header takes approximately: 22 (season) + 20 (week) + 25 (court) + 20 (line+gap) = 87pt
+  // Footer needs about 30pt
+  const pageHeaderHeight = 87;
+  const footerSpace = 30;
+  const availableHeight = pageHeight - margin - pageHeaderHeight - footerSpace;
 
-  // Score box size (minimum 0.75 inch = 54pt, using 60pt for comfort)
-  const scoreBoxSize = 60;
+  // Determine max games per court to calculate required rows
+  const maxGamesPerCourt = Math.max(...courts.map((c) => c.games.length), 1);
+  const columnsPerRow = 3;
+  const rowsNeeded = Math.ceil(maxGamesPerCourt / columnsPerRow);
 
-  // Process each round as a separate page
-  rounds.forEach((round, roundIndex) => {
-    // Add new page for rounds after the first
-    if (roundIndex > 0) {
+  // Round box dimensions - sized dynamically based on rows needed
+  const boxWidth = (pageWidth - margin * 2 - 20) / columnsPerRow; // 3 columns with gaps
+  const columnGap = 10;
+  const rowGap = 6;
+
+  // Calculate box height to fit all rows: rowsNeeded*boxHeight + (rowsNeeded-1)*rowGap = availableHeight
+  const boxHeight = Math.floor((availableHeight - (rowsNeeded - 1) * rowGap) / rowsNeeded);
+
+  // Score box size scales with box height (minimum 36pt for handwriting)
+  const scoreBoxSize = Math.max(36, Math.min(44, Math.floor(boxHeight * 0.35)));
+
+  // Process each court as a separate page
+  courts.forEach((court, courtIndex) => {
+    // Add new page for courts after the first
+    if (courtIndex > 0) {
       doc.addPage();
     }
 
@@ -158,10 +175,10 @@ export function exportScoreSheetsPdf(data: ExportScoreSheetsData): jsPDF {
     );
     y += 20;
 
-    // Round Number (prominent)
+    // Court Number (prominent - this is what identifies the sheet for placement)
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text(`Round ${round.roundNumber}`, pageWidth / 2, y, { align: "center" });
+    doc.text(`Court ${court.courtNumber}`, pageWidth / 2, y, { align: "center" });
     y += 25;
 
     // Horizontal line under header
@@ -170,19 +187,19 @@ export function exportScoreSheetsPdf(data: ExportScoreSheetsData): jsPDF {
     doc.line(margin, y, pageWidth - margin, y);
     y += 20;
 
-    // ========== COURT BOXES GRID ==========
-    // Layout courts in a grid (3 columns)
-    const courtsPerRow = 3;
+    // ========== ROUND BOXES GRID ==========
+    // Layout rounds in a grid (3 columns)
+    const roundsPerRow = 3;
 
-    round.games.forEach((game, gameIndex) => {
-      const col = gameIndex % courtsPerRow;
-      const row = Math.floor(gameIndex / courtsPerRow);
+    court.games.forEach((game, gameIndex) => {
+      const col = gameIndex % roundsPerRow;
+      const row = Math.floor(gameIndex / roundsPerRow);
 
       const boxX = margin + col * (boxWidth + columnGap);
       const boxY = y + row * (boxHeight + rowGap);
 
-      // Draw court box
-      drawCourtBox(doc, game, playerMap, boxX, boxY, boxWidth, boxHeight, scoreBoxSize);
+      // Draw round box (showing round number in header instead of court number)
+      drawRoundBox(doc, game, playerMap, boxX, boxY, boxWidth, boxHeight, scoreBoxSize);
     });
   });
 
@@ -214,9 +231,10 @@ export function exportScoreSheetsPdf(data: ExportScoreSheetsData): jsPDF {
 }
 
 /**
- * Draw a single court box with team names and score boxes
+ * Draw a single round box with team names and score boxes
+ * Shows the round number in the header (since the page is organized by court)
  */
-function drawCourtBox(
+function drawRoundBox(
   doc: jsPDF,
   game: Game,
   playerMap: Map<string, string>,
@@ -231,24 +249,36 @@ function drawCourtBox(
   doc.setLineWidth(1.5);
   doc.rect(x, y, width, height);
 
-  // Court number header
-  const headerHeight = 28;
+  // Scale internal dimensions based on box height
+  // For a "standard" box of ~130pt, these are the baseline values
+  const scaleFactor = height / 130;
+  const boxHeaderHeight = Math.max(18, Math.floor(20 * scaleFactor));
+  const headerFontSize = Math.max(10, Math.floor(12 * scaleFactor));
+  const labelFontSize = Math.max(7, Math.floor(8 * scaleFactor));
+  const nameFontSize = Math.max(8, Math.floor(10 * scaleFactor));
+
+  // Round number header (since the page is for a specific court, show the round)
   doc.setFillColor(240, 240, 240);
-  doc.rect(x, y, width, headerHeight, "F");
+  doc.rect(x, y, width, boxHeaderHeight, "F");
   doc.setDrawColor(60);
   doc.setLineWidth(0.5);
-  doc.line(x, y + headerHeight, x + width, y + headerHeight);
+  doc.line(x, y + boxHeaderHeight, x + width, y + boxHeaderHeight);
 
-  doc.setFontSize(14);
+  doc.setFontSize(headerFontSize);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  doc.text(`Court ${game.court_number}`, x + width / 2, y + 19, { align: "center" });
+  doc.text(`Round ${game.round_number}`, x + width / 2, y + boxHeaderHeight * 0.7, { align: "center" });
 
   // Team section positions
-  const teamSectionY = y + headerHeight;
-  const teamSectionHeight = (height - headerHeight) / 2;
-  const playerPadding = 10;
+  const teamSectionY = y + boxHeaderHeight;
+  const teamSectionHeight = (height - boxHeaderHeight) / 2;
+  const playerPadding = 6;
   const nameMaxWidth = width - scoreBoxSize - playerPadding * 3;
+
+  // Vertical spacing within team sections (scaled)
+  const labelOffset = Math.max(8, Math.floor(10 * scaleFactor));
+  const name1Offset = Math.max(18, Math.floor(22 * scaleFactor));
+  const name2Offset = Math.max(28, Math.floor(34 * scaleFactor));
 
   // ========== TEAM 1 ==========
   const team1Y = teamSectionY;
@@ -258,19 +288,19 @@ function drawCourtBox(
   ];
 
   // Team 1 label
-  doc.setFontSize(9);
+  doc.setFontSize(labelFontSize);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(100);
-  doc.text("TEAM 1", x + playerPadding, team1Y + 14);
+  doc.text("TEAM 1", x + playerPadding, team1Y + labelOffset);
 
   // Team 1 player names
-  doc.setFontSize(11);
+  doc.setFontSize(nameFontSize);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
   const player1Name1 = truncateText(doc, team1Names[0], nameMaxWidth);
   const player1Name2 = truncateText(doc, team1Names[1], nameMaxWidth);
-  doc.text(player1Name1, x + playerPadding, team1Y + 30);
-  doc.text(player1Name2, x + playerPadding, team1Y + 45);
+  doc.text(player1Name1, x + playerPadding, team1Y + name1Offset);
+  doc.text(player1Name2, x + playerPadding, team1Y + name2Offset);
 
   // Team 1 score box
   const scoreBoxX = x + width - scoreBoxSize - playerPadding;
@@ -292,19 +322,19 @@ function drawCourtBox(
   ];
 
   // Team 2 label
-  doc.setFontSize(9);
+  doc.setFontSize(labelFontSize);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(100);
-  doc.text("TEAM 2", x + playerPadding, team2Y + 14);
+  doc.text("TEAM 2", x + playerPadding, team2Y + labelOffset);
 
   // Team 2 player names
-  doc.setFontSize(11);
+  doc.setFontSize(nameFontSize);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
   const player2Name1 = truncateText(doc, team2Names[0], nameMaxWidth);
   const player2Name2 = truncateText(doc, team2Names[1], nameMaxWidth);
-  doc.text(player2Name1, x + playerPadding, team2Y + 30);
-  doc.text(player2Name2, x + playerPadding, team2Y + 45);
+  doc.text(player2Name1, x + playerPadding, team2Y + name1Offset);
+  doc.text(player2Name2, x + playerPadding, team2Y + name2Offset);
 
   // Team 2 score box
   const scoreBox2Y = team2Y + (teamSectionHeight - scoreBoxSize) / 2;
