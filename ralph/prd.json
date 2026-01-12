@@ -314,7 +314,7 @@
         "Verify in browser: finalize then unfinalize, confirm swaps work again"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

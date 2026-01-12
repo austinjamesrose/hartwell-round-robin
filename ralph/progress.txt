@@ -323,3 +323,24 @@ Started: 2026-01-11
   - Finalize only changes week status; score entry will be enabled in US-012
   - The existing canEdit check already makes schedule read-only when finalized
 ---
+
+## 2026-01-11 - US-011b
+- Added Unfinalize button to ScheduleViewer for finalized schedules
+- Button disabled with tooltip when any scores have been recorded
+- Confirmation dialog for unfinalize action
+- Created validation module at src/lib/weeks/validation.ts:
+  - canUnfinalizeWeek(): returns whether unfinalize is allowed + error message
+  - countGamesWithScores(): counts games with both scores set
+- Server component passes gamesWithScoresCount to ScheduleViewer
+- Week status reverts from "finalized" to "draft" on confirm
+- Files created:
+  - src/lib/weeks/validation.ts
+  - src/lib/weeks/validation.test.ts (10 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+- **Learnings for future iterations:**
+  - Games have scores when both team1_score and team2_score are not null
+  - Wrap disabled buttons in <span> for tooltips to work on disabled elements
+  - Validation modules should return both boolean result and human-readable error message
+---
