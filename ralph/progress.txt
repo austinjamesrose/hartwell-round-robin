@@ -514,3 +514,28 @@ Started: 2026-01-11
   - truncateText() helper handles long player names that exceed column width
   - checkNewPage() helper adds page breaks when content exceeds page height
 ---
+
+## 2026-01-11 - US-019
+- Created PDF export functionality for season standings using jsPDF
+- Export PDF button added to Leaderboard CardHeader
+- PDF includes: season name, "Standings as of [current date]" header
+- Table format with columns: Rank, Player, Points, Games, Wins, Win%
+- Alternating row backgrounds for readability
+- Top 3 players shown in bold
+- Tied players show "T" prefix (e.g., "T3")
+- Handles pagination for large player lists
+- Empty standings show "No games have been played yet" message
+- Footer shows generation timestamp and page numbers
+- Created integration tests using vi.mock for jsPDF (11 tests)
+- Files created:
+  - src/lib/pdf/exportStandingsPdf.ts
+  - src/lib/pdf/exportStandingsPdf.test.ts
+- Files modified:
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx (add Export PDF button, seasonName prop)
+  - src/app/dashboard/seasons/[id]/page.tsx (pass seasonName to Leaderboard)
+- **Learnings for future iterations:**
+  - Reuse existing ranking types (RankedPlayer, formatRank, formatWinPercentage) from leaderboard module
+  - Table rendering with column alignment requires calculating x positions manually
+  - Use setFillColor + rect for alternating row backgrounds
+  - Pagination: check y position before each row and redraw header on new pages
+---
