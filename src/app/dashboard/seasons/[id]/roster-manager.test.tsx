@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -55,6 +55,21 @@ vi.mock("@/lib/players/validation", async (importOriginal) => {
 // Import component after mocks
 import { RosterManager } from "./roster-manager";
 
+// Mock localStorage for all tests
+const localStorageMock = {
+  store: {} as Record<string, string>,
+  getItem: vi.fn((key: string) => localStorageMock.store[key] ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageMock.store[key] = value;
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete localStorageMock.store[key];
+  }),
+  clear: vi.fn(() => {
+    localStorageMock.store = {};
+  }),
+};
+
 describe("RosterManager - Confirmation Dialog", () => {
   const mockPlayer = {
     id: "player-1",
@@ -73,6 +88,11 @@ describe("RosterManager - Confirmation Dialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorageMock.store = {};
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      writable: true,
+    });
     // Setup mock chain for delete operation: .delete().eq("season_id", x).eq("player_id", y)
     // First eq returns an object with eq method, second eq resolves with result
     const secondEq = vi.fn().mockResolvedValue({ error: null });
@@ -235,5 +255,166 @@ describe("RosterManager - Confirmation Dialog", () => {
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith("Failed to remove player from roster");
     });
+  });
+});
+
+describe("RosterManager - Collapsible Roster", () => {
+  const mockPlayers = [
+    {
+      id: "player-1",
+      name: "Alice Smith",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "player-2",
+      name: "Bob Jones",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "player-3",
+      name: "Carol White",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+
+  const defaultProps = {
+    seasonId: "season-1",
+    allPlayers: mockPlayers,
+    rosterPlayers: mockPlayers,
+    playerGameCounts: {},
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.store = {};
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      writable: true,
+    });
+
+    // Setup default mock chain
+    const secondEq = vi.fn().mockResolvedValue({ error: null });
+    const firstEq = vi.fn().mockReturnValue({ eq: secondEq });
+    mockDelete.mockReturnValue({ eq: firstEq });
+    mockFrom.mockReturnValue({
+      delete: mockDelete,
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          ilike: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      }),
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("roster starts expanded by default (no localStorage value)", () => {
+    render(<RosterManager {...defaultProps} />);
+
+    // Should show ChevronDown (expanded) icon
+    expect(screen.getByTestId("chevron-down")).toBeInTheDocument();
+    expect(screen.queryByTestId("chevron-right")).not.toBeInTheDocument();
+
+    // Player list should be visible
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    expect(screen.getByText("Bob Jones")).toBeInTheDocument();
+    expect(screen.getByText("Carol White")).toBeInTheDocument();
+  });
+
+  it("clicking toggle button collapses roster and hides player list", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Click the toggle button
+    const toggleButton = screen.getByTestId("roster-toggle");
+    await user.click(toggleButton);
+
+    // Should now show ChevronRight (collapsed) icon
+    expect(screen.getByTestId("chevron-right")).toBeInTheDocument();
+    expect(screen.queryByTestId("chevron-down")).not.toBeInTheDocument();
+
+    // Content should have collapsed classes (max-h-0, opacity-0)
+    const content = screen.getByTestId("roster-content");
+    expect(content).toHaveClass("max-h-0");
+    expect(content).toHaveClass("opacity-0");
+  });
+
+  it("collapsed state shows player count summary", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Click to collapse
+    const toggleButton = screen.getByTestId("roster-toggle");
+    await user.click(toggleButton);
+
+    // Should show player count in header
+    expect(screen.getByText("(3 players in roster)")).toBeInTheDocument();
+  });
+
+  it("collapsed state shows singular 'player' for single player", async () => {
+    const user = userEvent.setup();
+    const singlePlayerProps = {
+      ...defaultProps,
+      rosterPlayers: [mockPlayers[0]],
+    };
+    render(<RosterManager {...singlePlayerProps} />);
+
+    // Click to collapse
+    const toggleButton = screen.getByTestId("roster-toggle");
+    await user.click(toggleButton);
+
+    // Should show singular "player"
+    expect(screen.getByText("(1 player in roster)")).toBeInTheDocument();
+  });
+
+  it("collapse state is saved to localStorage on toggle", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Click to collapse
+    const toggleButton = screen.getByTestId("roster-toggle");
+    await user.click(toggleButton);
+
+    // localStorage should be updated
+    expect(localStorageMock.setItem).toHaveBeenCalledWith("roster-collapsed", "true");
+  });
+
+  it("component reads initial state from localStorage on mount", () => {
+    // Set localStorage to collapsed before rendering
+    localStorageMock.store["roster-collapsed"] = "true";
+
+    render(<RosterManager {...defaultProps} />);
+
+    // Should start collapsed (ChevronRight visible) - localStorage value was read during init
+    expect(screen.getByTestId("chevron-right")).toBeInTheDocument();
+    expect(screen.queryByTestId("chevron-down")).not.toBeInTheDocument();
+  });
+
+  it("clicking toggle when collapsed expands roster", async () => {
+    // Start collapsed
+    localStorageMock.store["roster-collapsed"] = "true";
+
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Click to expand
+    const toggleButton = screen.getByTestId("roster-toggle");
+    await user.click(toggleButton);
+
+    // Should now show ChevronDown (expanded) icon
+    expect(screen.getByTestId("chevron-down")).toBeInTheDocument();
+    expect(screen.queryByTestId("chevron-right")).not.toBeInTheDocument();
+
+    // localStorage should be updated to false
+    expect(localStorageMock.setItem).toHaveBeenCalledWith("roster-collapsed", "false");
   });
 });

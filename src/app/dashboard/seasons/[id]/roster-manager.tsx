@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -80,6 +81,25 @@ export function RosterManager({
 
   // Confirmation dialog state for player removal
   const [playerToRemove, setPlayerToRemove] = useState<Player | null>(null);
+
+  // Collapsible roster state - initialized from localStorage using lazy initializer
+  const [isRosterCollapsed, setIsRosterCollapsed] = useState(() => {
+    // Only access localStorage on client-side (check for window to avoid SSR issues)
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("roster-collapsed");
+      return stored === "true";
+    }
+    return false;
+  });
+
+  // Toggle roster collapse and persist to localStorage
+  function toggleRosterCollapse() {
+    setIsRosterCollapsed((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("roster-collapsed", String(newValue));
+      return newValue;
+    });
+  }
 
   // Create a Set of player IDs already in the roster for quick lookup
   const rosterPlayerIds = new Set(rosterPlayers.map((p) => p.id));
@@ -455,58 +475,86 @@ export function RosterManager({
           </Form>
         </div>
 
-        {/* Current roster display */}
+        {/* Current roster display with collapse toggle */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">Current Roster</h3>
-          {rosterPlayers.length > 0 ? (
-            <div className="space-y-1">
-              {rosterPlayers
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((player) => {
-                  const gameCount = playerGameCounts[player.id] || 0;
-                  const removalCheck = checkPlayerRemoval(gameCount);
-                  const isRemoving = removingPlayerId === player.id;
+          <button
+            type="button"
+            onClick={toggleRosterCollapse}
+            className="flex w-full items-center gap-2 text-left"
+            data-testid="roster-toggle"
+          >
+            {isRosterCollapsed ? (
+              <ChevronRight className="h-4 w-4" data-testid="chevron-right" />
+            ) : (
+              <ChevronDown className="h-4 w-4" data-testid="chevron-down" />
+            )}
+            <h3 className="text-sm font-medium">
+              Current Roster
+              {isRosterCollapsed && (
+                <span className="ml-2 font-normal text-muted-foreground">
+                  ({rosterPlayers.length} player{rosterPlayers.length !== 1 ? "s" : ""} in roster)
+                </span>
+              )}
+            </h3>
+          </button>
 
-                  return (
-                    <div
-                      key={player.id}
-                      className="flex items-center justify-between rounded-lg border p-2"
-                    >
-                      <Link
-                        href={`/dashboard/seasons/${seasonId}/players/${player.id}`}
-                        className="hover:text-blue-600 hover:underline"
+          {/* Collapsible content with smooth animation */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              isRosterCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
+            }`}
+            data-testid="roster-content"
+          >
+            {rosterPlayers.length > 0 ? (
+              <div className="space-y-1">
+                {rosterPlayers
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((player) => {
+                    const gameCount = playerGameCounts[player.id] || 0;
+                    const removalCheck = checkPlayerRemoval(gameCount);
+                    const isRemoving = removingPlayerId === player.id;
+
+                    return (
+                      <div
+                        key={player.id}
+                        className="flex items-center justify-between rounded-lg border p-2"
                       >
-                        {player.name}
-                      </Link>
-                      <div className="flex items-center gap-2">
-                        {!removalCheck.canRemove && (
-                          <span className="text-xs text-muted-foreground">
-                            {removalCheck.message}
-                          </span>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoveClick(player)}
-                          disabled={!removalCheck.canRemove || isRemoving}
-                          title={
-                            removalCheck.canRemove
-                              ? "Remove from season"
-                              : removalCheck.message
-                          }
+                        <Link
+                          href={`/dashboard/seasons/${seasonId}/players/${player.id}`}
+                          className="hover:text-blue-600 hover:underline"
                         >
-                          {isRemoving ? "Removing..." : "Remove"}
-                        </Button>
+                          {player.name}
+                        </Link>
+                        <div className="flex items-center gap-2">
+                          {!removalCheck.canRemove && (
+                            <span className="text-xs text-muted-foreground">
+                              {removalCheck.message}
+                            </span>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveClick(player)}
+                            disabled={!removalCheck.canRemove || isRemoving}
+                            title={
+                              removalCheck.canRemove
+                                ? "Remove from season"
+                                : removalCheck.message
+                            }
+                          >
+                            {isRemoving ? "Removing..." : "Remove"}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No players added to this season yet.
-            </p>
-          )}
+                    );
+                  })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No players added to this season yet.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Confirmation dialog for player removal */}
