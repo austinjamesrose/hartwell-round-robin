@@ -392,3 +392,19 @@ Started: 2026-01-11
   - Use Set<gameId> for tracking which games are currently saving
   - hasUnsavedChanges() compares local state to database values
 ---
+
+## 2026-01-11 - US-013
+- Added edit mode toggle for completed games in ScoreEntry component
+- Completed games show read-only score display with Edit button
+- Clicking Edit re-opens the score input fields with Cancel option
+- Winning team highlighted in green (score box and player names) in read-only mode
+- Same validation rules apply when editing scores
+- Player point totals recalculated automatically via saved game scores
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- **Learnings for future iterations:**
+  - Use Set<gameId> for editingGames state to track which games are in edit mode
+  - getWinningTeam() from validation module useful for UI highlighting
+  - cancelEditing() should reset scoreInputs to original database values
+  - showInputMode logic: !hasRecordedScore OR isEditing for flexible UX
+---

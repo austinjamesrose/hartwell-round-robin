@@ -372,7 +372,7 @@
         "Verify in browser: edit an existing score and confirm update"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
