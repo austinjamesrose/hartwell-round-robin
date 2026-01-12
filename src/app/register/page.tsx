@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PasswordRequirements } from "./PasswordRequirements";
 
 // Validation schema for registration form
 const registerSchema = z
@@ -167,6 +168,7 @@ export default function RegisterPage() {
                         {...field}
                       />
                     </FormControl>
+                    <PasswordRequirements password={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}
