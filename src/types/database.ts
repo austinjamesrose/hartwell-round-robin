@@ -46,7 +46,15 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "weeks_season_id_fkey";
+            columns: ["id"];
+            isOneToOne: false;
+            referencedRelation: "weeks";
+            referencedColumns: ["season_id"];
+          }
+        ];
       };
       players: {
         Row: {
@@ -124,7 +132,15 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "weeks_season_id_fkey";
+            columns: ["season_id"];
+            isOneToOne: false;
+            referencedRelation: "seasons";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       player_availability: {
         Row: {
