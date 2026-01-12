@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { validateScore, parseScoreInput } from "@/lib/scores/validation";
+import { validateScore, parseScoreInput, getWinningTeam } from "@/lib/scores/validation";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -74,6 +74,9 @@ export function ScoreEntry({
 
   // Track saving state per game
   const [savingGames, setSavingGames] = useState<Set<string>>(new Set());
+
+  // Track which games are in edit mode (games with existing scores)
+  const [editingGames, setEditingGames] = useState<Set<string>>(new Set());
 
   // Create player name lookup map
   const playerNameMap = useMemo(() => {
@@ -185,6 +188,13 @@ export function ScoreEntry({
         return;
       }
 
+      // Exit edit mode after successful save
+      setEditingGames((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(gameId);
+        return newSet;
+      });
+
       // Refresh the page to get updated data
       router.refresh();
     } catch {
@@ -214,6 +224,51 @@ export function ScoreEntry({
   function hasBothScores(gameId: string): boolean {
     const scoreInput = getScoreInput(gameId);
     return scoreInput.team1Score !== "" && scoreInput.team2Score !== "";
+  }
+
+  // Check if a game has a recorded score in the database
+  function hasRecordedScore(game: Game): boolean {
+    return game.team1_score !== null && game.team2_score !== null;
+  }
+
+  // Check if a game is currently in edit mode
+  function isEditing(gameId: string): boolean {
+    return editingGames.has(gameId);
+  }
+
+  // Start editing a game (opens score inputs)
+  function startEditing(gameId: string) {
+    setEditingGames((prev) => new Set(prev).add(gameId));
+    // Clear any previous error
+    setErrors((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(gameId);
+      return newMap;
+    });
+  }
+
+  // Cancel editing a game (resets to original scores)
+  function cancelEditing(game: Game) {
+    setEditingGames((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(game.id);
+      return newSet;
+    });
+    // Reset input values to original database values
+    setScoreInputs((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(game.id, {
+        team1Score: game.team1_score !== null ? String(game.team1_score) : "",
+        team2Score: game.team2_score !== null ? String(game.team2_score) : "",
+      });
+      return newMap;
+    });
+    // Clear any error
+    setErrors((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(game.id);
+      return newMap;
+    });
   }
 
   // Score entry is only available for finalized schedules
@@ -246,16 +301,25 @@ export function ScoreEntry({
             <div className="space-y-3">
               {round.games.map((game) => {
                 const scoreInput = getScoreInput(game.id);
-                const hasScore = game.team1_score !== null && game.team2_score !== null;
+                const gameHasRecordedScore = hasRecordedScore(game);
+                const gameIsEditing = isEditing(game.id);
                 const error = errors.get(game.id);
                 const isSaving = savingGames.has(game.id);
-                const showSaveButton = hasUnsavedChanges(game) && hasBothScores(game.id);
+
+                // Show input mode if: no recorded score yet, OR currently editing
+                const showInputMode = !gameHasRecordedScore || gameIsEditing;
+                const showSaveButton = showInputMode && hasUnsavedChanges(game) && hasBothScores(game.id);
+
+                // Determine winning team for read-only display
+                const winningTeam = gameHasRecordedScore
+                  ? getWinningTeam(game.team1_score!, game.team2_score!)
+                  : null;
 
                 return (
                   <div
                     key={game.id}
                     className={`rounded-lg border p-4 ${
-                      hasScore ? "bg-green-50 border-green-200" : "bg-muted/30"
+                      gameHasRecordedScore && !gameIsEditing ? "bg-green-50 border-green-200" : "bg-muted/30"
                     }`}
                   >
                     {/* Court label */}
@@ -263,88 +327,172 @@ export function ScoreEntry({
                       Court {game.court_number}
                     </div>
 
-                    {/* Game matchup with score inputs */}
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2">
-                      {/* Team 1 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
-                          {/* Team 1 score input */}
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={scoreInput.team1Score}
-                            onChange={(e) => handleScoreChange(game.id, "team1", e.target.value)}
-                            placeholder="0"
-                            className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
-                              error ? "border-red-500 focus:ring-red-500" : ""
-                            }`}
-                            style={{ minWidth: "56px", minHeight: "56px" }}
-                            aria-label={`Team 1 score for Court ${game.court_number}`}
-                          />
-                          {/* Team 1 players */}
+                    {showInputMode ? (
+                      /* Editable score inputs */
+                      <>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2">
+                          {/* Team 1 */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-blue-700 truncate">
-                              {getPlayerName(game.team1_player1_id)}
+                            <div className="flex items-center gap-3">
+                              {/* Team 1 score input */}
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={scoreInput.team1Score}
+                                onChange={(e) => handleScoreChange(game.id, "team1", e.target.value)}
+                                placeholder="0"
+                                className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
+                                  error ? "border-red-500 focus:ring-red-500" : ""
+                                }`}
+                                style={{ minWidth: "56px", minHeight: "56px" }}
+                                aria-label={`Team 1 score for Court ${game.court_number}`}
+                              />
+                              {/* Team 1 players */}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-blue-700 truncate">
+                                  {getPlayerName(game.team1_player1_id)}
+                                </div>
+                                <div className="text-sm text-blue-600 truncate">
+                                  {getPlayerName(game.team1_player2_id)}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm text-blue-600 truncate">
-                              {getPlayerName(game.team1_player2_id)}
+                          </div>
+
+                          {/* Vs separator */}
+                          <div className="text-center text-muted-foreground text-sm font-medium px-2 self-center">
+                            vs
+                          </div>
+
+                          {/* Team 2 */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 sm:flex-row-reverse">
+                              {/* Team 2 score input */}
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={scoreInput.team2Score}
+                                onChange={(e) => handleScoreChange(game.id, "team2", e.target.value)}
+                                placeholder="0"
+                                className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
+                                  error ? "border-red-500 focus:ring-red-500" : ""
+                                }`}
+                                style={{ minWidth: "56px", minHeight: "56px" }}
+                                aria-label={`Team 2 score for Court ${game.court_number}`}
+                              />
+                              {/* Team 2 players */}
+                              <div className="flex-1 min-w-0 sm:text-right">
+                                <div className="text-sm font-medium text-orange-700 truncate">
+                                  {getPlayerName(game.team2_player1_id)}
+                                </div>
+                                <div className="text-sm text-orange-600 truncate">
+                                  {getPlayerName(game.team2_player2_id)}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Vs separator */}
-                      <div className="text-center text-muted-foreground text-sm font-medium px-2 self-center">
-                        vs
-                      </div>
+                        {/* Error message */}
+                        {error && (
+                          <div className="mt-3 text-sm text-red-600 font-medium">
+                            {error.message}
+                          </div>
+                        )}
 
-                      {/* Team 2 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 sm:flex-row-reverse">
-                          {/* Team 2 score input */}
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={scoreInput.team2Score}
-                            onChange={(e) => handleScoreChange(game.id, "team2", e.target.value)}
-                            placeholder="0"
-                            className={`w-14 h-14 text-center text-xl font-bold shrink-0 touch-manipulation ${
-                              error ? "border-red-500 focus:ring-red-500" : ""
-                            }`}
-                            style={{ minWidth: "56px", minHeight: "56px" }}
-                            aria-label={`Team 2 score for Court ${game.court_number}`}
-                          />
-                          {/* Team 2 players */}
-                          <div className="flex-1 min-w-0 sm:text-right">
-                            <div className="text-sm font-medium text-orange-700 truncate">
-                              {getPlayerName(game.team2_player1_id)}
+                        {/* Action buttons for edit mode */}
+                        <div className="mt-3 flex justify-end gap-2">
+                          {gameIsEditing && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelEditing(game)}
+                              disabled={isSaving}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                          {showSaveButton && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveScore(game.id)}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? "Saving..." : "Save Score"}
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      /* Read-only score display with Edit button */
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2">
+                        {/* Team 1 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            {/* Team 1 score display */}
+                            <div
+                              className={`w-14 h-14 flex items-center justify-center text-xl font-bold shrink-0 rounded-md border ${
+                                winningTeam === 1
+                                  ? "bg-green-100 border-green-300 text-green-700"
+                                  : "bg-gray-100 border-gray-300 text-gray-600"
+                              }`}
+                              style={{ minWidth: "56px", minHeight: "56px" }}
+                            >
+                              {game.team1_score}
                             </div>
-                            <div className="text-sm text-orange-600 truncate">
-                              {getPlayerName(game.team2_player2_id)}
+                            {/* Team 1 players */}
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-sm font-medium truncate ${winningTeam === 1 ? "text-green-700" : "text-blue-700"}`}>
+                                {getPlayerName(game.team1_player1_id)}
+                              </div>
+                              <div className={`text-sm truncate ${winningTeam === 1 ? "text-green-600" : "text-blue-600"}`}>
+                                {getPlayerName(game.team1_player2_id)}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Error message */}
-                    {error && (
-                      <div className="mt-3 text-sm text-red-600 font-medium">
-                        {error.message}
-                      </div>
-                    )}
+                        {/* Vs separator */}
+                        <div className="text-center text-muted-foreground text-sm font-medium px-2 self-center">
+                          vs
+                        </div>
 
-                    {/* Save button - only show if there are unsaved changes and both scores filled */}
-                    {showSaveButton && (
-                      <div className="mt-3 flex justify-end">
+                        {/* Team 2 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 sm:flex-row-reverse">
+                            {/* Team 2 score display */}
+                            <div
+                              className={`w-14 h-14 flex items-center justify-center text-xl font-bold shrink-0 rounded-md border ${
+                                winningTeam === 2
+                                  ? "bg-green-100 border-green-300 text-green-700"
+                                  : "bg-gray-100 border-gray-300 text-gray-600"
+                              }`}
+                              style={{ minWidth: "56px", minHeight: "56px" }}
+                            >
+                              {game.team2_score}
+                            </div>
+                            {/* Team 2 players */}
+                            <div className="flex-1 min-w-0 sm:text-right">
+                              <div className={`text-sm font-medium truncate ${winningTeam === 2 ? "text-green-700" : "text-orange-700"}`}>
+                                {getPlayerName(game.team2_player1_id)}
+                              </div>
+                              <div className={`text-sm truncate ${winningTeam === 2 ? "text-green-600" : "text-orange-600"}`}>
+                                {getPlayerName(game.team2_player2_id)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Edit button */}
                         <Button
                           size="sm"
-                          onClick={() => handleSaveScore(game.id)}
-                          disabled={isSaving}
+                          variant="outline"
+                          onClick={() => startEditing(game.id)}
+                          className="ml-2 shrink-0"
                         >
-                          {isSaving ? "Saving..." : "Save Score"}
+                          Edit
                         </Button>
                       </div>
                     )}
