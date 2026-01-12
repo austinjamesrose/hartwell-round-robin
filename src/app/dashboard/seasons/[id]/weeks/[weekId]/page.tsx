@@ -14,6 +14,7 @@ import {
   AvailabilityManager,
   type PlayerAvailability,
 } from "./availability-manager";
+import { ScheduleGenerator } from "./schedule-generator";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -108,6 +109,20 @@ export default async function WeekManagementPage({
     };
   });
 
+  // Get available players for schedule generation
+  const availablePlayers = playerAvailability
+    .filter((p) => p.isAvailable)
+    .map((p) => ({ id: p.playerId, name: p.playerName }));
+
+  // Check if there's an existing schedule (any games for this week)
+  const { data: existingGamesData } = await supabase
+    .from("games")
+    .select("id")
+    .eq("week_id", weekId)
+    .limit(1);
+
+  const hasExistingSchedule = (existingGamesData?.length ?? 0) > 0;
+
   return (
     <div className="min-h-screen p-4">
       <div className="mx-auto max-w-4xl">
@@ -175,6 +190,15 @@ export default async function WeekManagementPage({
           <AvailabilityManager
             weekId={weekId}
             playerAvailability={playerAvailability}
+          />
+
+          {/* Schedule Generation */}
+          <ScheduleGenerator
+            weekId={weekId}
+            numCourts={season.num_courts}
+            availablePlayers={availablePlayers}
+            hasExistingSchedule={hasExistingSchedule}
+            weekStatus={currentWeek.status}
           />
 
           {/* Schedule warnings if any */}
