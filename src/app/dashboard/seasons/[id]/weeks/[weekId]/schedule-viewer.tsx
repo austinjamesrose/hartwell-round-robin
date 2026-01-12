@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -30,6 +30,7 @@ import {
   findPlayerPosition,
   performSwap,
   checkSwapViolations,
+  getValidSwapTargets,
   type SwapGame,
 } from "@/lib/scheduling/swap";
 import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
@@ -175,6 +176,46 @@ export function ScheduleViewer({
         .map((b) => b.player_id),
     }));
   }, [games, byes]);
+
+  // Compute valid swap targets when a player is selected
+  const validSwapTargets = useMemo((): Set<string> => {
+    if (!selectedPlayer) return new Set();
+
+    const round = rounds.find((r) => r.roundNumber === selectedPlayer.roundNumber);
+    if (!round) return new Set();
+
+    // Convert to SwapGame format
+    const roundGames: SwapGame[] = round.games.map((g) => ({
+      id: g.id,
+      roundNumber: g.round_number,
+      team1Player1Id: g.team1_player1_id,
+      team1Player2Id: g.team1_player2_id,
+      team2Player1Id: g.team2_player1_id,
+      team2Player2Id: g.team2_player2_id,
+    }));
+
+    const targets = getValidSwapTargets(selectedPlayer.playerId, roundGames, round.byes);
+    return new Set(targets);
+  }, [selectedPlayer, rounds]);
+
+  // Escape key handler to cancel swap mode
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && selectedPlayer) {
+        setSelectedPlayer(null);
+        setError(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedPlayer]);
+
+  // Cancel swap mode handler
+  function handleCancelSwapMode() {
+    setSelectedPlayer(null);
+    setError(null);
+  }
 
   // Calculate summary statistics
   const summary = useMemo((): ScheduleSummary => {
@@ -477,26 +518,39 @@ export function ScheduleViewer({
     );
   }
 
-  // Check if a player is a valid swap target
+  // Check if a player is a valid swap target (in same round and not teammate)
   function isValidSwapTarget(roundNumber: number, playerId: string): boolean {
     if (!selectedPlayer) return false;
     if (selectedPlayer.roundNumber !== roundNumber) return false;
-    if (selectedPlayer.playerId === playerId) return false;
-    return true;
+    return validSwapTargets.has(playerId);
+  }
+
+  // Check if a player is in a different round (should be dimmed during swap mode)
+  function isInDifferentRound(roundNumber: number): boolean {
+    if (!selectedPlayer) return false;
+    return selectedPlayer.roundNumber !== roundNumber;
   }
 
   // Get CSS classes for a player name based on selection state
   function getPlayerClasses(roundNumber: number, playerId: string): string {
     const baseClasses = "cursor-pointer transition-colors px-1 rounded";
 
+    // Selected player gets blue ring highlight
     if (isPlayerSelected(roundNumber, playerId)) {
-      return `${baseClasses} bg-blue-500 text-white`;
+      return `${baseClasses} ring-2 ring-blue-500 bg-blue-50`;
     }
 
+    // Valid swap targets in same round get green background
     if (isValidSwapTarget(roundNumber, playerId)) {
-      return `${baseClasses} hover:bg-blue-100`;
+      return `${baseClasses} bg-green-100 hover:bg-green-200`;
     }
 
+    // Players in other rounds are dimmed when in swap mode
+    if (isInDifferentRound(roundNumber)) {
+      return "opacity-50 cursor-not-allowed px-1";
+    }
+
+    // Default hover for editable but not selected/target
     if (canEdit) {
       return `${baseClasses} hover:bg-muted`;
     }
@@ -512,17 +566,23 @@ export function ScheduleViewer({
       return <span>{name}</span>;
     }
 
+    // Disable clicking on players in other rounds during swap mode
+    const isDimmed = isInDifferentRound(roundNumber);
+
     return (
       <span
         className={getPlayerClasses(roundNumber, playerId)}
         onClick={(e) => {
           e.stopPropagation();
-          handlePlayerClick(roundNumber, playerId);
+          if (!isDimmed) {
+            handlePlayerClick(roundNumber, playerId);
+          }
         }}
         role="button"
-        tabIndex={0}
+        tabIndex={isDimmed ? -1 : 0}
+        aria-disabled={isDimmed}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (!isDimmed && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             handlePlayerClick(roundNumber, playerId);
           }
@@ -560,14 +620,23 @@ export function ScheduleViewer({
           </Alert>
         )}
 
-        {/* Selection hint */}
+        {/* Selection hint with Cancel button */}
         {canEdit && selectedPlayer && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <AlertDescription className="text-blue-800">
-              <strong>{getPlayerName(selectedPlayer.playerId)}</strong> selected in
-              Round {selectedPlayer.roundNumber}. Click another player in the same
-              round to swap, or click the same player to deselect.
-            </AlertDescription>
+          <Alert className="border-blue-200 bg-blue-50" data-testid="swap-banner">
+            <div className="flex items-center justify-between gap-4">
+              <AlertDescription className="text-blue-800">
+                Select another player to swap with{" "}
+                <strong>{getPlayerName(selectedPlayer.playerId)}</strong>
+              </AlertDescription>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancelSwapMode}
+                data-testid="cancel-swap-button"
+              >
+                Cancel
+              </Button>
+            </div>
           </Alert>
         )}
 

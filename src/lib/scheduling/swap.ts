@@ -220,6 +220,64 @@ export function performSwap(
 }
 
 /**
+ * Gets all valid swap targets for a selected player in a given round.
+ * Valid targets are players in the same round who are not:
+ * - The selected player themselves
+ * - A teammate on the same team in the same game
+ *
+ * @param selectedPlayerId - The ID of the currently selected player
+ * @param roundGames - All games in the round
+ * @param roundByes - Player IDs on bye in the round
+ * @returns Array of player IDs that are valid swap targets
+ */
+export function getValidSwapTargets(
+  selectedPlayerId: string,
+  roundGames: SwapGame[],
+  roundByes: string[]
+): string[] {
+  const validTargets: string[] = [];
+
+  // Find the selected player's position to check for teammate exclusion
+  const selectedPosition = findPlayerPosition(selectedPlayerId, roundGames, roundByes);
+
+  // Players on bye are always valid targets (unless they are the selected player)
+  for (const byePlayerId of roundByes) {
+    if (byePlayerId !== selectedPlayerId) {
+      validTargets.push(byePlayerId);
+    }
+  }
+
+  // Check all players in games
+  for (const game of roundGames) {
+    const positions = [
+      { playerId: game.team1Player1Id, team: 1, position: 1 },
+      { playerId: game.team1Player2Id, team: 1, position: 2 },
+      { playerId: game.team2Player1Id, team: 2, position: 1 },
+      { playerId: game.team2Player2Id, team: 2, position: 2 },
+    ];
+
+    for (const pos of positions) {
+      // Skip the selected player
+      if (pos.playerId === selectedPlayerId) continue;
+
+      // If selected player is in a game, check if this is their teammate
+      if (
+        selectedPosition?.location.type === "game" &&
+        selectedPosition.location.gameId === game.id &&
+        selectedPosition.location.team === pos.team
+      ) {
+        // Same game, same team = teammate, not a valid target
+        continue;
+      }
+
+      validTargets.push(pos.playerId);
+    }
+  }
+
+  return validTargets;
+}
+
+/**
  * Checks for constraint violations after a swap.
  * Returns warnings for any issues found.
  *

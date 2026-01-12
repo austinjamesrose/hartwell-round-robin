@@ -306,7 +306,17 @@ describe("exportSchedulePdf", () => {
 
   it("handles schedules with many rounds", () => {
     // Create a schedule with 12 rounds (should trigger pagination)
-    const manyRoundGames = [];
+    const manyRoundGames: Array<{
+      id: string;
+      round_number: number;
+      court_number: number;
+      team1_player1_id: string;
+      team1_player2_id: string;
+      team2_player1_id: string;
+      team2_player2_id: string;
+      team1_score: number | null;
+      team2_score: number | null;
+    }> = [];
     for (let round = 1; round <= 12; round++) {
       manyRoundGames.push({
         id: `g${round}`,

@@ -6,6 +6,7 @@ import {
   findPlayerPosition,
   performSwap,
   checkSwapViolations,
+  getValidSwapTargets,
   type SwapGame,
   type PlayerPosition,
 } from "./swap";
@@ -356,5 +357,99 @@ describe("checkSwapViolations", () => {
       (w) => w.includes("Alice") && w.includes("2 games")
     );
     expect(gameCountWarning).toBeDefined();
+  });
+});
+
+describe("getValidSwapTargets", () => {
+  const testGames: SwapGame[] = [
+    {
+      id: "game-1",
+      roundNumber: 1,
+      team1Player1Id: "p1",
+      team1Player2Id: "p2",
+      team2Player1Id: "p3",
+      team2Player2Id: "p4",
+    },
+    {
+      id: "game-2",
+      roundNumber: 1,
+      team1Player1Id: "p5",
+      team1Player2Id: "p6",
+      team2Player1Id: "p7",
+      team2Player2Id: "p8",
+    },
+  ];
+  const testByes = ["bye-1", "bye-2"];
+
+  it("returns players in same round only (excludes self)", () => {
+    const targets = getValidSwapTargets("p1", testGames, testByes);
+
+    // p1 is selected, should return all other players in round
+    // Excludes: p1 (self), p2 (teammate)
+    // Includes: p3, p4 (other team same game), p5-p8 (other game), bye-1, bye-2
+    expect(targets).not.toContain("p1");
+    expect(targets).toContain("p3");
+    expect(targets).toContain("p4");
+    expect(targets).toContain("p5");
+    expect(targets).toContain("p6");
+    expect(targets).toContain("p7");
+    expect(targets).toContain("p8");
+    expect(targets).toContain("bye-1");
+    expect(targets).toContain("bye-2");
+  });
+
+  it("excludes teammate on same team in same game", () => {
+    const targets = getValidSwapTargets("p1", testGames, testByes);
+
+    // p2 is p1's teammate (same game, same team)
+    expect(targets).not.toContain("p2");
+  });
+
+  it("includes players on opposing team in same game", () => {
+    const targets = getValidSwapTargets("p1", testGames, testByes);
+
+    // p3 and p4 are on opposing team in same game - valid targets
+    expect(targets).toContain("p3");
+    expect(targets).toContain("p4");
+  });
+
+  it("includes players on bye", () => {
+    const targets = getValidSwapTargets("p1", testGames, testByes);
+
+    expect(targets).toContain("bye-1");
+    expect(targets).toContain("bye-2");
+  });
+
+  it("works when selected player is on bye", () => {
+    const targets = getValidSwapTargets("bye-1", testGames, testByes);
+
+    // When on bye, all game players and other bye players are valid
+    expect(targets).not.toContain("bye-1"); // Excludes self
+    expect(targets).toContain("bye-2");
+    expect(targets).toContain("p1");
+    expect(targets).toContain("p2");
+    expect(targets).toContain("p3");
+    expect(targets).toContain("p8");
+  });
+
+  it("returns all non-teammate players from multiple games", () => {
+    const targets = getValidSwapTargets("p5", testGames, testByes);
+
+    // p5 is in game-2, so p6 is teammate (excluded)
+    expect(targets).not.toContain("p5"); // self
+    expect(targets).not.toContain("p6"); // teammate
+    expect(targets).toContain("p7"); // opposing team
+    expect(targets).toContain("p8"); // opposing team
+    expect(targets).toContain("p1"); // different game
+    expect(targets).toContain("p2"); // different game
+  });
+
+  it("returns correct count of valid targets", () => {
+    const targets = getValidSwapTargets("p1", testGames, testByes);
+
+    // Total players: 8 in games + 2 on bye = 10
+    // Excluded: p1 (self) + p2 (teammate) = 2
+    // Expected targets: 10 - 2 = 8
+    expect(targets).toHaveLength(8);
   });
 });
