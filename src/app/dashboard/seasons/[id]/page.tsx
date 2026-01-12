@@ -10,6 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RosterManager } from "./roster-manager";
+import { findActiveWeekId } from "./week-navigation";
+import { Button } from "@/components/ui/button";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -158,33 +160,53 @@ export default async function SeasonDetailPage({
             <CardContent>
               {weeks.length > 0 ? (
                 <div className="space-y-2">
-                  {weeks.map((week) => (
-                    <div
-                      key={week.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div>
-                        <span className="font-medium">Week {week.week_number}</span>
-                        <span className="ml-2 text-muted-foreground">
-                          {formatDate(week.date)}
-                        </span>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          week.status === "completed"
-                            ? "bg-green-100 text-green-800"
-                            : week.status === "finalized"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
+                  {(() => {
+                    const activeWeekId = findActiveWeekId(weeks);
+                    return weeks.map((week) => (
+                      <Link
+                        key={week.id}
+                        href={`/dashboard/seasons/${id}/weeks/${week.id}`}
+                        className={`flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
+                          week.id === activeWeekId ? "ring-2 ring-blue-500" : ""
                         }`}
                       >
-                        {week.status}
-                      </span>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Week {week.week_number}</span>
+                          <span className="text-muted-foreground">
+                            {formatDate(week.date)}
+                          </span>
+                          {week.id === activeWeekId && (
+                            <span className="text-xs text-blue-600">(Active)</span>
+                          )}
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-medium ${
+                            week.status === "completed"
+                              ? "bg-green-100 text-green-800"
+                              : week.status === "finalized"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {week.status}
+                        </span>
+                      </Link>
+                    ));
+                  })()}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No weeks found for this season.</p>
+              )}
+
+              {/* Quick access to active week */}
+              {weeks.length > 0 && (
+                <div className="mt-4">
+                  <Link href={`/dashboard/seasons/${id}/weeks/${findActiveWeekId(weeks)}`}>
+                    <Button className="w-full">
+                      Manage Active Week
+                    </Button>
+                  </Link>
+                </div>
               )}
             </CardContent>
           </Card>
