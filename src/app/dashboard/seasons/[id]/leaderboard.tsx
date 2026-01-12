@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   calculateRankings,
   formatRank,
@@ -15,10 +16,12 @@ import {
   type PlayerStats,
   type RankedPlayer,
 } from "@/lib/leaderboard/ranking";
+import { exportStandingsPdf } from "@/lib/pdf/exportStandingsPdf";
 
 // Props passed from server component
 export interface LeaderboardProps {
   seasonId: string;
+  seasonName: string;
   playerStats: PlayerStats[];
 }
 
@@ -26,9 +29,17 @@ export interface LeaderboardProps {
  * Leaderboard component displaying player rankings
  * Mobile-optimized table with rank, name, points, games, wins, win%
  */
-export function Leaderboard({ seasonId, playerStats }: LeaderboardProps) {
+export function Leaderboard({ seasonId, seasonName, playerStats }: LeaderboardProps) {
   // Calculate rankings from player stats
   const rankedPlayers: RankedPlayer[] = calculateRankings(playerStats);
+
+  // Handle PDF export
+  function handleExportPdf() {
+    exportStandingsPdf({
+      standingsInfo: { seasonName },
+      rankedPlayers,
+    });
+  }
 
   if (rankedPlayers.length === 0) {
     return (
@@ -51,10 +62,17 @@ export function Leaderboard({ seasonId, playerStats }: LeaderboardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Leaderboard</CardTitle>
-        <CardDescription>
-          {rankedPlayers.length} player{rankedPlayers.length !== 1 ? "s" : ""} ranked
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>Leaderboard</CardTitle>
+            <CardDescription>
+              {rankedPlayers.length} player{rankedPlayers.length !== 1 ? "s" : ""} ranked
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            Export PDF
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {/* Mobile-optimized table wrapper */}

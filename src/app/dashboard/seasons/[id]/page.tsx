@@ -261,7 +261,7 @@ export default async function SeasonDetailPage({
           </Card>
 
           {/* Leaderboard */}
-          <Leaderboard seasonId={id} playerStats={playerStats} />
+          <Leaderboard seasonId={id} seasonName={season.name} playerStats={playerStats} />
         </div>
       </div>
     </div>
