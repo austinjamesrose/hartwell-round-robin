@@ -16,6 +16,7 @@ import {
 } from "./availability-manager";
 import { ScheduleGenerator } from "./schedule-generator";
 import { ScheduleViewer } from "./schedule-viewer";
+import { ScoreEntry } from "./score-entry";
 import { countGamesWithScores } from "@/lib/weeks/validation";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
@@ -228,6 +229,13 @@ export default async function WeekManagementPage({
             weekStatus={currentWeek.status}
             weekId={weekId}
             gamesWithScoresCount={gamesWithScoresCount}
+          />
+
+          {/* Score Entry (shows for finalized/completed weeks) */}
+          <ScoreEntry
+            games={games}
+            players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
+            weekStatus={currentWeek.status}
           />
         </div>
       </div>
