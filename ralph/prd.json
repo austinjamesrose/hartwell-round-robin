@@ -296,7 +296,7 @@
         "Verify in browser: finalize and confirm status change"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

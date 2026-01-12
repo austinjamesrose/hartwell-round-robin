@@ -308,3 +308,18 @@ Started: 2026-01-11
   - Optimistic UI updates with local state, then router.refresh() on save
   - Swaps only allowed within same round (cross-round would break game counts)
 ---
+
+## 2026-01-11 - US-011
+- Added finalize button to ScheduleViewer component for draft schedules
+- Confirmation dialog with DialogContent from shadcn/ui
+- Shows constraint warnings in dialog if any exist
+- Updates week status from "draft" to "finalized" via Supabase
+- Schedule becomes read-only after finalization (canEdit = weekStatus === "draft" already enforces this)
+- Button hidden when there are unsaved swap changes
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+- **Learnings for future iterations:**
+  - Dialog component from shadcn/ui uses controlled state (open, onOpenChange props)
+  - Finalize only changes week status; score entry will be enabled in US-012
+  - The existing canEdit check already makes schedule read-only when finalized
+---
