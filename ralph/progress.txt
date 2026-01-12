@@ -112,3 +112,20 @@ Started: 2026-01-11
   - Join queries: `select('player_id, players(*)')` returns nested object, needs `sp.players as unknown as Player`
   - Validation helpers like `isPlayerInSeason()` should use Set<string> for O(1) lookup
 ---
+
+## 2026-01-11 - US-005
+- Added remove from season button to each player row in roster
+- Block player removal if they have game history (shows "Player has X games recorded")
+- Fetch player game counts by querying games table for all 4 player columns
+- Added checkPlayerRemoval() validation function with unit tests
+- Remove button disabled and shows tooltip when player has games
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (fetch game counts, pass to RosterManager)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (add remove button, handle removal)
+  - src/lib/players/validation.ts (add checkPlayerRemoval function)
+  - src/lib/players/validation.test.ts (add tests for checkPlayerRemoval)
+- **Learnings for future iterations:**
+  - Games table has 4 player columns: team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id
+  - To count games for a player in a season, first get week IDs for the season, then query games
+  - Use Record<string, number> to pass player game counts from server to client component
+---
