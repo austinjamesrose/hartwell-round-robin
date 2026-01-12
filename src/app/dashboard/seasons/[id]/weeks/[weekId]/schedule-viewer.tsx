@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -133,6 +134,10 @@ export function ScheduleViewer({
   // Mark Complete dialog state
   const [showMarkCompleteDialog, setShowMarkCompleteDialog] = useState(false);
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+
+  // PDF export loading states
+  const [isExportingScoreSheets, setIsExportingScoreSheets] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Can edit only in draft mode
   const canEdit = weekStatus === "draft";
@@ -665,8 +670,16 @@ export function ScheduleViewer({
               size="sm"
               onClick={handleSaveChanges}
               disabled={isSaving}
+              data-testid="save-changes-button"
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         )}
@@ -702,29 +715,57 @@ export function ScheduleViewer({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              exportScoreSheetsPdf({
-                scheduleInfo,
-                games,
-                players,
-              });
+            disabled={isExportingScoreSheets}
+            data-testid="export-score-sheets-button"
+            onClick={async () => {
+              setIsExportingScoreSheets(true);
+              try {
+                await exportScoreSheetsPdf({
+                  scheduleInfo,
+                  games,
+                  players,
+                });
+              } finally {
+                setIsExportingScoreSheets(false);
+              }
             }}
           >
-            Export Score Sheets
+            {isExportingScoreSheets ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              "Export Score Sheets"
+            )}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              exportSchedulePdf({
-                scheduleInfo,
-                games,
-                byes,
-                players,
-              });
+            disabled={isExportingPdf}
+            data-testid="export-pdf-button"
+            onClick={async () => {
+              setIsExportingPdf(true);
+              try {
+                await exportSchedulePdf({
+                  scheduleInfo,
+                  games,
+                  byes,
+                  players,
+                });
+              } finally {
+                setIsExportingPdf(false);
+              }
             }}
           >
-            Export PDF
+            {isExportingPdf ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              "Export PDF"
+            )}
           </Button>
         </div>
 
@@ -941,8 +982,16 @@ export function ScheduleViewer({
               <Button
                 onClick={handleFinalizeSchedule}
                 disabled={isFinalizing}
+                data-testid="finalize-confirm-button"
               >
-                {isFinalizing ? "Finalizing..." : "Finalize Schedule"}
+                {isFinalizing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Finalizing...
+                  </>
+                ) : (
+                  "Finalize Schedule"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -970,8 +1019,16 @@ export function ScheduleViewer({
               <Button
                 onClick={handleUnfinalizeSchedule}
                 disabled={isUnfinalizing}
+                data-testid="unfinalize-confirm-button"
               >
-                {isUnfinalizing ? "Unfinalizing..." : "Unfinalize Schedule"}
+                {isUnfinalizing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Unfinalizing...
+                  </>
+                ) : (
+                  "Unfinalize Schedule"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1018,8 +1075,16 @@ export function ScheduleViewer({
               <Button
                 onClick={handleMarkComplete}
                 disabled={isMarkingComplete}
+                data-testid="mark-complete-confirm-button"
               >
-                {isMarkingComplete ? "Completing..." : "Mark Complete"}
+                {isMarkingComplete ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Completing...
+                  </>
+                ) : (
+                  "Mark Complete"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -177,5 +178,87 @@ describe("ScheduleGenerator - Disabled State", () => {
 
     const button = screen.getByRole("button", { name: /generate schedule/i });
     expect(button).toBeDisabled();
+  });
+});
+
+describe("ScheduleGenerator - Loading States (US-V4-019)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("Generate Schedule button shows spinner and 'Generating...' when loading", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScheduleGenerator
+        weekId="week-1"
+        numCourts={6}
+        availablePlayers={createMockPlayers(28)}
+        hasExistingSchedule={false}
+        weekStatus="draft"
+      />
+    );
+
+    const button = screen.getByTestId("generate-schedule-button");
+    await user.click(button);
+
+    // Button should show "Generating..." text
+    expect(button).toHaveTextContent("Generating...");
+
+    // Wait for generation to complete
+    await waitFor(() => {
+      expect(button).not.toHaveTextContent("Generating...");
+    });
+  });
+
+  it("button is disabled during loading state", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScheduleGenerator
+        weekId="week-1"
+        numCourts={6}
+        availablePlayers={createMockPlayers(28)}
+        hasExistingSchedule={false}
+        weekStatus="draft"
+      />
+    );
+
+    const button = screen.getByTestId("generate-schedule-button");
+    await user.click(button);
+
+    // Button should be disabled during generation
+    expect(button).toBeDisabled();
+
+    // Wait for generation to complete
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+    });
+  });
+
+  it("loading state clears after async operation completes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScheduleGenerator
+        weekId="week-1"
+        numCourts={6}
+        availablePlayers={createMockPlayers(28)}
+        hasExistingSchedule={false}
+        weekStatus="draft"
+      />
+    );
+
+    const button = screen.getByTestId("generate-schedule-button");
+    await user.click(button);
+
+    // Wait for loading to complete
+    await waitFor(() => {
+      // Button text should return to "Regenerate Schedule" (since schedule is now generated)
+      expect(button).toHaveTextContent(/regenerate schedule/i);
+    });
+
+    // Button should no longer be disabled
+    expect(button).not.toBeDisabled();
   });
 });

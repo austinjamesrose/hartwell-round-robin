@@ -387,3 +387,51 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - lucide-react provides Search and X icons for common search patterns
   - Test assertions need to match actual substring behavior ("Jones" does NOT contain "son", it contains "ones")
 ---
+
+## 2026-01-12 05:58 CST - US-V4-018
+- What was implemented:
+  - Created `src/lib/games/progress.ts` with `calculateProgress()` and `isGameComplete()` functions
+  - Added progress indicator UI to score-entry component at top of CardContent
+  - Progress text shows "X of Y games completed (Z%)"
+  - Visual progress bar with green fill (bg-green-500) and smooth transition
+  - CheckCircle icon appears next to text when 100% complete
+  - Progress tracks ALL games (not just filtered), updates reactively via useMemo
+  - Created comprehensive test file with 12 tests for progress functions
+  - Added 5 component tests for progress indicator in score-entry.test.tsx
+- Files changed:
+  - src/lib/games/progress.ts (new - calculateProgress, isGameComplete functions)
+  - src/lib/games/progress.test.ts (new - 12 tests)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx (added progress UI)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.test.tsx (added 5 progress tests)
+- **Learnings for future iterations:**
+  - Progress should track all games, not just filtered games, for accurate overall completion
+  - Use data-testid for styled elements that need assertions on style properties (like width %)
+  - `useMemo` with game dependency ensures progress updates when scores are saved
+  - Math.round() for percentage provides clean integer display
+---
+
+## 2026-01-12 06:03 CST - US-V4-019
+- What was implemented:
+  - Added loading indicators using Loader2 icon from lucide-react with animate-spin class
+  - Updated Generate Schedule button to show "Generating..." with spinner during async operation
+  - Updated Save Schedule button to show "Saving..." with spinner during async operation
+  - Updated Score Entry Save buttons to show "Saving..." with spinner when saving individual game scores
+  - Updated PDF export buttons (Export PDF and Export Score Sheets) with loading states and "Exporting..." text
+  - Updated Finalize, Unfinalize, and Mark Complete dialog buttons with loading states
+  - All buttons disabled during loading to prevent double-clicks
+  - Used try/finally pattern to ensure loading state clears on both success and error
+  - Removed custom LoadingSpinner SVG in favor of consistent Loader2 icon usage
+  - Added data-testid attributes for reliable test querying
+  - Added 7 new tests across schedule-generator.test.tsx and schedule-viewer.test.tsx
+- Files changed:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-generator.tsx (Loader2 import, spinner buttons)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-generator.test.tsx (3 loading state tests)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (Loader2 import, PDF export loading, dialog loading)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.test.tsx (4 loading state tests)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx (Loader2 import, save button spinner)
+- **Learnings for future iterations:**
+  - Loader2 from lucide-react with animate-spin provides consistent loading indicator across app
+  - Pattern: disabled={isLoading} prevents double-clicks during async operations
+  - try/finally ensures loading state always clears, preventing stuck loading states
+  - PDF export functions can be wrapped with async/await for consistent loading pattern
+---

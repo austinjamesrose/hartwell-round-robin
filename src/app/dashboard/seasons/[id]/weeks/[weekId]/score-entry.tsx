@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -564,8 +564,16 @@ export function ScoreEntry({
                               size="sm"
                               onClick={() => handleSaveScore(game.id)}
                               disabled={isSaving}
+                              data-testid={`save-score-button-${game.id}`}
                             >
-                              {isSaving ? "Saving..." : "Save Score"}
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                "Save Score"
+                              )}
                             </Button>
                           )}
                         </div>

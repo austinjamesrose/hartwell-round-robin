@@ -491,7 +491,7 @@
         "Run: npm run test -- progress.test.ts (all tests pass)"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": "Extract calculateProgress to src/lib/games/progress.ts for testing."
     },
     {
@@ -517,7 +517,7 @@
         "Run: npm run test (all loading-related tests pass)"
       ],
       "priority": 20,
-      "passes": false,
+      "passes": true,
       "notes": "Use try/finally pattern to ensure loading state always clears. Mock async functions to test loading behavior."
     }
   ]

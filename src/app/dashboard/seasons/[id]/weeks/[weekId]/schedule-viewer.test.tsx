@@ -372,3 +372,53 @@ describe("ScheduleViewer - Swap Execution (US-V4-012)", () => {
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
 });
+
+describe("ScheduleViewer - Loading States (US-V4-019)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("Export PDF button is not disabled initially", () => {
+    render(<ScheduleViewer {...defaultProps} />);
+
+    const exportButton = screen.getByTestId("export-pdf-button");
+    expect(exportButton).not.toBeDisabled();
+    expect(exportButton).toHaveTextContent("Export PDF");
+  });
+
+  it("Export Score Sheets button is not disabled initially", () => {
+    render(<ScheduleViewer {...defaultProps} />);
+
+    const exportButton = screen.getByTestId("export-score-sheets-button");
+    expect(exportButton).not.toBeDisabled();
+    expect(exportButton).toHaveTextContent("Export Score Sheets");
+  });
+
+  it("Save Changes button has data-testid for testing", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Perform a swap to show Save Changes button
+    const aliceElements = screen.getAllByText("Alice");
+    await user.click(aliceElements[0]);
+    const carolElements = screen.getAllByText("Carol");
+    await user.click(carolElements[0]);
+
+    // Save Changes button should have data-testid
+    const saveButton = screen.getByTestId("save-changes-button");
+    expect(saveButton).toBeInTheDocument();
+    expect(saveButton).toHaveTextContent("Save Changes");
+  });
+
+  it("Finalize Schedule button opens dialog", async () => {
+    const user = userEvent.setup();
+    render(<ScheduleViewer {...defaultProps} />);
+
+    // Click Finalize Schedule button
+    const finalizeButton = screen.getByRole("button", { name: /finalize schedule/i });
+    await user.click(finalizeButton);
+
+    // Dialog should appear
+    expect(screen.getByText("Finalize Schedule?")).toBeInTheDocument();
+  });
+});
