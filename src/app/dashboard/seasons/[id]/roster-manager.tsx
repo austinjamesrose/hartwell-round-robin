@@ -39,6 +39,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Database } from "@/types/database";
 
 type Player = Database["public"]["Tables"]["players"]["Row"];
@@ -69,6 +77,9 @@ export function RosterManager({
   // Duplicate player name validation state
   const [nameValidation, setNameValidation] = useState<PlayerNameValidationResult | null>(null);
   const [isValidatingName, setIsValidatingName] = useState(false);
+
+  // Confirmation dialog state for player removal
+  const [playerToRemove, setPlayerToRemove] = useState<Player | null>(null);
 
   // Create a Set of player IDs already in the roster for quick lookup
   const rosterPlayerIds = new Set(rosterPlayers.map((p) => p.id));
@@ -268,14 +279,30 @@ export function RosterManager({
     setIsAddingExisting(false);
   }
 
-  // Remove a player from the season roster
-  async function handleRemovePlayer(playerId: string) {
+  // Open confirmation dialog for player removal
+  function handleRemoveClick(player: Player) {
+    setPlayerToRemove(player);
+  }
+
+  // Close the confirmation dialog without removing
+  function handleCancelRemoval() {
+    setPlayerToRemove(null);
+  }
+
+  // Remove a player from the season roster after confirmation
+  async function handleConfirmRemoval() {
+    if (!playerToRemove) return;
+
+    const playerId = playerToRemove.id;
+    const playerName = playerToRemove.name;
+
     // Check if player has game history
     const gameCount = playerGameCounts[playerId] || 0;
     const removalCheck = checkPlayerRemoval(gameCount);
 
     if (!removalCheck.canRemove) {
       setError(removalCheck.message);
+      setPlayerToRemove(null);
       return;
     }
 
@@ -292,12 +319,16 @@ export function RosterManager({
 
     if (deleteError) {
       setError(deleteError.message);
+      toast.error("Failed to remove player from roster");
       setRemovingPlayerId(null);
+      setPlayerToRemove(null);
       return;
     }
 
+    toast.success(`${playerName} removed from roster`);
     router.refresh();
     setRemovingPlayerId(null);
+    setPlayerToRemove(null);
   }
 
   return (
@@ -456,7 +487,7 @@ export function RosterManager({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRemovePlayer(player.id)}
+                          onClick={() => handleRemoveClick(player)}
                           disabled={!removalCheck.canRemove || isRemoving}
                           title={
                             removalCheck.canRemove
@@ -477,6 +508,39 @@ export function RosterManager({
             </p>
           )}
         </div>
+
+        {/* Confirmation dialog for player removal */}
+        <Dialog
+          open={playerToRemove !== null}
+          onOpenChange={(open) => {
+            if (!open) handleCancelRemoval();
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove Player</DialogTitle>
+              <DialogDescription>
+                Remove {playerToRemove?.name} from this season&apos;s roster?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCancelRemoval}
+                disabled={removingPlayerId !== null}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmRemoval}
+                disabled={removingPlayerId !== null}
+              >
+                {removingPlayerId !== null ? "Removing..." : "Remove"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
