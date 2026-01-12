@@ -9,6 +9,8 @@ Started: Sun Jan 11 22:25:27 CST 2026
 - Tests use describe/it pattern with safeParse for schema tests, async/await for function tests
 - Form components use react-hook-form with zodResolver
 - Use `ilike()` for case-insensitive Supabase queries
+- Toast notifications: import `{ toast } from "sonner"` - use `toast.success()` and `toast.error()`
+- Vitest setup file at `vitest.setup.ts` imports `@testing-library/jest-dom/vitest` for matchers
 ---
 
 ## 2026-01-12 04:29 CST - US-V4-001
@@ -42,4 +44,26 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Player validation pattern mirrors season validation but adds `normalizePlayerName()` for space collapsing
   - When showing duplicate warning, provide option to add existing player to roster as alternative action
   - Use regex `/\s+/g` to collapse multiple spaces to single space
+---
+
+## 2026-01-12 04:41 CST - US-V4-016
+- What was implemented:
+  - Added Toaster component to root layout (src/app/layout.tsx) with position: bottom-right, duration: 4000ms
+  - Added toast.success() for season creation in new season page
+  - Added toast.success() for player added to roster (both new and existing players)
+  - Added toast.error() for failed saves and API errors
+  - Created vitest.setup.ts with @testing-library/jest-dom/vitest for test matchers
+  - Created layout.test.tsx with 4 tests for Toaster configuration
+- Files changed:
+  - src/app/layout.tsx (added Toaster import and component)
+  - src/app/layout.test.tsx (new - 4 tests for Toaster)
+  - src/app/dashboard/seasons/new/page.tsx (added toast calls for success/error)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added toast calls for player add/error)
+  - vitest.config.ts (added setupFiles)
+  - vitest.setup.ts (new - jest-dom matchers setup)
+  - package.json (added @testing-library/jest-dom)
+- **Learnings for future iterations:**
+  - Sonner Toaster is a client component that can be added to server layout components
+  - Mock sonner's Toaster in component tests to inspect props via data attributes
+  - Root layout tests will show HTML nesting warnings (expected, not an error)
 ---

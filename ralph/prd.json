@@ -68,7 +68,7 @@
         "Run: npm run test -- layout.test.tsx (all tests pass)"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "IMPORTANT: This story MUST be completed before stories that use toast. Sonner v2.0.7 already in package.json."
     },
     {
