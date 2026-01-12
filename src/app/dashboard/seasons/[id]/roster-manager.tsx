@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -144,12 +145,17 @@ export function RosterManager({
       } else {
         setError(insertError.message);
       }
+      toast.error("Failed to add player to roster");
       setIsAddingExisting(false);
       return;
     }
 
+    // Get player name for the toast
+    const addedPlayer = allPlayers.find((p) => p.id === selectedPlayerId);
+
     // Reset selection and refresh
     setSelectedPlayerId("");
+    toast.success(`${addedPlayer?.name || "Player"} added to roster`);
     router.refresh();
     setIsAddingExisting(false);
   }
@@ -193,6 +199,7 @@ export function RosterManager({
 
     if (createError) {
       setError(createError.message);
+      toast.error("Failed to create player");
       setIsCreatingNew(false);
       return;
     }
@@ -205,6 +212,7 @@ export function RosterManager({
 
     if (rosterError) {
       setError(rosterError.message);
+      toast.error("Failed to add player to roster");
       setIsCreatingNew(false);
       return;
     }
@@ -212,6 +220,7 @@ export function RosterManager({
     // Reset form, validation state, and refresh
     newPlayerForm.reset();
     setNameValidation(null);
+    toast.success(`${data.name} added to roster`);
     router.refresh();
     setIsCreatingNew(false);
   }
@@ -233,6 +242,8 @@ export function RosterManager({
 
     const supabase = createClient();
 
+    const playerName = nameValidation.existingPlayer.name;
+
     const { error: insertError } = await supabase.from("season_players").insert({
       season_id: seasonId,
       player_id: playerId,
@@ -244,6 +255,7 @@ export function RosterManager({
       } else {
         setError(insertError.message);
       }
+      toast.error("Failed to add player to roster");
       setIsAddingExisting(false);
       return;
     }
@@ -251,6 +263,7 @@ export function RosterManager({
     // Reset form, validation state, and refresh
     newPlayerForm.reset();
     setNameValidation(null);
+    toast.success(`${playerName} added to roster`);
     router.refresh();
     setIsAddingExisting(false);
   }

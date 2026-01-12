@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
@@ -115,6 +116,7 @@ export default function CreateSeasonPage() {
 
     if (seasonError) {
       setError(seasonError.message);
+      toast.error("Failed to create season");
       setIsLoading(false);
       return;
     }
@@ -135,11 +137,13 @@ export default function CreateSeasonPage() {
       // (In production, this would ideally be a transaction)
       await supabase.from("seasons").delete().eq("id", season.id);
       setError(`Failed to create week schedules: ${weeksError.message}`);
+      toast.error("Failed to create week schedules");
       setIsLoading(false);
       return;
     }
 
-    // Redirect to the season dashboard
+    // Show success toast and redirect to the season dashboard
+    toast.success(`Season "${data.name}" created`);
     router.push(`/dashboard/seasons/${season.id}`);
     router.refresh();
   }
