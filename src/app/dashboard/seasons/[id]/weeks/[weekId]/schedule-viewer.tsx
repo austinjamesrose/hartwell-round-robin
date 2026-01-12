@@ -33,6 +33,7 @@ import {
   type SwapGame,
 } from "@/lib/scheduling/swap";
 import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
+import { exportSchedulePdf } from "@/lib/pdf/exportSchedulePdf";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -45,6 +46,13 @@ interface PlayerInfo {
   name: string;
 }
 
+// Schedule information for PDF export
+interface ScheduleInfo {
+  seasonName: string;
+  weekNumber: number;
+  weekDate: string;
+}
+
 // Props for the ScheduleViewer component
 interface ScheduleViewerProps {
   games: Game[];
@@ -54,6 +62,7 @@ interface ScheduleViewerProps {
   weekStatus: "draft" | "finalized" | "completed";
   weekId: string;
   gamesWithScoresCount: number;
+  scheduleInfo: ScheduleInfo;
 }
 
 // Represents a single round for display
@@ -93,6 +102,7 @@ export function ScheduleViewer({
   weekStatus,
   weekId,
   gamesWithScoresCount,
+  scheduleInfo,
 }: ScheduleViewerProps) {
   const router = useRouter();
 
@@ -598,8 +608,8 @@ export function ScheduleViewer({
           </Alert>
         )}
 
-        {/* Summary stats */}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-4">
+        {/* Summary stats and Export PDF */}
+        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground border-b pb-4">
           <div className="flex items-center gap-2">
             <span className="font-medium text-foreground">{summary.totalRounds}</span>
             <span>rounds</span>
@@ -612,6 +622,21 @@ export function ScheduleViewer({
             <span className="font-medium text-foreground">{summary.gamesPerPlayer}</span>
             <span>games/player</span>
           </div>
+          <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              exportSchedulePdf({
+                scheduleInfo,
+                games,
+                byes,
+                players,
+              });
+            }}
+          >
+            Export PDF
+          </Button>
         </div>
 
         {/* Rounds grid */}

@@ -231,6 +231,11 @@ export default async function WeekManagementPage({
             weekStatus={currentWeek.status}
             weekId={weekId}
             gamesWithScoresCount={gamesWithScoresCount}
+            scheduleInfo={{
+              seasonName: season.name,
+              weekNumber: currentWeek.week_number,
+              weekDate: formatDate(currentWeek.date),
+            }}
           />
 
           {/* Score Entry (shows for finalized/completed weeks) */}
