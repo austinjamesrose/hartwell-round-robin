@@ -19,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { createClient } from "@/lib/supabase/client";
 import {
   findPlayerPosition,
@@ -26,6 +32,7 @@ import {
   checkSwapViolations,
   type SwapGame,
 } from "@/lib/scheduling/swap";
+import { canUnfinalizeWeek } from "@/lib/weeks/validation";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -46,6 +53,7 @@ interface ScheduleViewerProps {
   scheduleWarnings: string[] | null;
   weekStatus: "draft" | "finalized" | "completed";
   weekId: string;
+  gamesWithScoresCount: number;
 }
 
 // Represents a single round for display
@@ -76,6 +84,7 @@ export function ScheduleViewer({
   scheduleWarnings: initialWarnings,
   weekStatus,
   weekId,
+  gamesWithScoresCount,
 }: ScheduleViewerProps) {
   const router = useRouter();
 
@@ -96,8 +105,16 @@ export function ScheduleViewer({
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
+  // Unfinalize dialog state
+  const [showUnfinalizeDialog, setShowUnfinalizeDialog] = useState(false);
+  const [isUnfinalizing, setIsUnfinalizing] = useState(false);
+
   // Can edit only in draft mode
   const canEdit = weekStatus === "draft";
+
+  // Check if unfinalize is allowed
+  const unfinalizeResult = canUnfinalizeWeek(gamesWithScoresCount);
+  const canUnfinalize = weekStatus === "finalized" && unfinalizeResult.canUnfinalize;
 
   // Create player name lookup map
   const playerNameMap = useMemo(() => {
@@ -375,6 +392,32 @@ export function ScheduleViewer({
     }
   }
 
+  // Unfinalize the schedule (change week status from finalized back to draft)
+  async function handleUnfinalizeSchedule() {
+    setIsUnfinalizing(true);
+    setError(null);
+
+    const supabase = createClient();
+
+    try {
+      const { error: updateError } = await supabase
+        .from("weeks")
+        .update({ status: "draft" })
+        .eq("id", weekId);
+
+      if (updateError) {
+        throw new Error(`Failed to unfinalize schedule: ${updateError.message}`);
+      }
+
+      setShowUnfinalizeDialog(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unfinalize schedule");
+    } finally {
+      setIsUnfinalizing(false);
+    }
+  }
+
   // Check if a player is selected
   function isPlayerSelected(roundNumber: number, playerId: string): boolean {
     return (
@@ -620,6 +663,33 @@ export function ScheduleViewer({
           </div>
         )}
 
+        {/* Unfinalize button (only for finalized schedules with no scores) */}
+        {weekStatus === "finalized" && (
+          <div className="border-t pt-4 mt-4">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowUnfinalizeDialog(true)}
+                      disabled={!canUnfinalize}
+                      className="w-full sm:w-auto"
+                    >
+                      Unfinalize Schedule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!canUnfinalize && unfinalizeResult.errorMessage && (
+                  <TooltipContent>
+                    <p>{unfinalizeResult.errorMessage}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+
         {/* Finalize confirmation dialog */}
         <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
           <DialogContent>
@@ -661,6 +731,35 @@ export function ScheduleViewer({
                 disabled={isFinalizing}
               >
                 {isFinalizing ? "Finalizing..." : "Finalize Schedule"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Unfinalize confirmation dialog */}
+        <Dialog open={showUnfinalizeDialog} onOpenChange={setShowUnfinalizeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Unfinalize Schedule?</DialogTitle>
+              <DialogDescription>
+                This will revert the schedule to draft status. You will be able
+                to make changes to player assignments again.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowUnfinalizeDialog(false)}
+                disabled={isUnfinalizing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUnfinalizeSchedule}
+                disabled={isUnfinalizing}
+              >
+                {isUnfinalizing ? "Unfinalizing..." : "Unfinalize Schedule"}
               </Button>
             </DialogFooter>
           </DialogContent>

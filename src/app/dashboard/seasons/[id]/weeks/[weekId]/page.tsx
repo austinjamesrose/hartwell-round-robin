@@ -16,6 +16,7 @@ import {
 } from "./availability-manager";
 import { ScheduleGenerator } from "./schedule-generator";
 import { ScheduleViewer } from "./schedule-viewer";
+import { countGamesWithScores } from "@/lib/weeks/validation";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -126,6 +127,9 @@ export default async function WeekManagementPage({
   const games = gamesData ?? [];
   const hasExistingSchedule = games.length > 0;
 
+  // Count games with scores (for unfinalize blocking)
+  const gamesWithScoresCount = countGamesWithScores(games);
+
   // Fetch all byes for this week
   const { data: byesData } = await supabase
     .from("byes")
@@ -223,6 +227,7 @@ export default async function WeekManagementPage({
             scheduleWarnings={currentWeek.schedule_warnings}
             weekStatus={currentWeek.status}
             weekId={weekId}
+            gamesWithScoresCount={gamesWithScoresCount}
           />
         </div>
       </div>
