@@ -1,17 +1,28 @@
 # Ralph Progress Log
-Started: 2026-01-11
-PRD: v4.0 Post-Testing Enhancements
+Started: Sun Jan 11 22:25:27 CST 2026
 ---
 
 ## Codebase Patterns
-(Patterns discovered during iterations will be added here)
+- Validation logic lives in `src/lib/{domain}/validation.ts` with matching `.test.ts` files
+- Use Zod schemas for form validation, helper functions for async/business logic
+- Mock Supabase client in tests using `vi.mock("@/lib/supabase/client")` and `vi.mocked(createClient)`
+- Tests use describe/it pattern with safeParse for schema tests, async/await for function tests
+- Form components use react-hook-form with zodResolver
+- Use `ilike()` for case-insensitive Supabase queries
+---
 
-### Known Patterns from v3.0
-- UI Components: shadcn-style in src/components/ui/
-- Forms: react-hook-form + zod validation
-- Toast: sonner (already installed, underutilized)
-- Database: Supabase with RLS
-- PDF: jsPDF client-side generation
-- Routes: Next.js App Router with [id] dynamic segments
-
+## 2026-01-12 04:29 CST - US-V4-001
+- What was implemented:
+  - Added `validateSeasonName()` function to check for duplicate season names (case-insensitive)
+  - Integrated validation into season creation form with onBlur and onSubmit checks
+  - Added inline error display and loading state while validating
+  - Submit button disabled when name is invalid or validation in progress
+- Files changed:
+  - src/lib/seasons/validation.ts (added validateSeasonName function and types)
+  - src/lib/seasons/validation.test.ts (added 7 tests for validateSeasonName)
+  - src/app/dashboard/seasons/new/page.tsx (added validation UI and handlers)
+- **Learnings for future iterations:**
+  - Supabase `ilike()` filter does case-insensitive matching but doesn't do exact match, so follow up with JS comparison
+  - When mocking Supabase client, use chained mocks: `from().select().eq().ilike()`
+  - Form validation on blur requires both calling field.onBlur() and custom handler
 ---
