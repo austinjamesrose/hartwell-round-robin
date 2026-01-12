@@ -282,3 +282,29 @@ Started: 2026-01-11
   - The byes table stores round-by-round bye assignments (week_id, round_number, player_id)
   - ScheduleViewer returns null when no games exist (graceful empty state)
 ---
+
+## 2026-01-11 - US-010
+- Implemented manual schedule adjustments (player swapping within rounds)
+- Created swap.ts module with validation logic:
+  - validateSwap(): Ensures valid swap (not same team, not self)
+  - findPlayerPosition(): Locates player in game or bye list
+  - performSwap(): Creates new game/bye data with swapped players
+  - checkSwapViolations(): Detects repeat partnerships and game count violations
+- Enhanced ScheduleViewer with interactive swap UI:
+  - Click player to select (blue highlight)
+  - Click another player in same round to swap
+  - Constraint warnings displayed after swaps
+  - Save/Cancel buttons for unsaved changes
+- Regenerate option already available via ScheduleGenerator for draft weeks
+- Files created:
+  - src/lib/scheduling/swap.ts
+  - src/lib/scheduling/swap.test.ts (18 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (major rewrite for swap support)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (pass weekId to ScheduleViewer)
+- **Learnings for future iterations:**
+  - TypeScript discriminated unions need early extraction (const loc = pos.location) for proper narrowing
+  - Use partnershipKey() from generateSchedule.ts for consistent partnership tracking
+  - Optimistic UI updates with local state, then router.refresh() on save
+  - Swaps only allowed within same round (cross-round would break game counts)
+---

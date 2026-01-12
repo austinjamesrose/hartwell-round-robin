@@ -278,7 +278,7 @@
         "Verify in browser: swap two players and confirm UI updates"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
