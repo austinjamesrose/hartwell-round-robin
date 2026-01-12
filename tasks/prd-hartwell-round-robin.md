@@ -654,22 +654,148 @@ CREATE POLICY seasons_admin_policy ON seasons
 - 24-32 players (variable)
 - C courts (configurable, default 6, range 4-8)
 - Players active per round = C × 4
-- Exactly 8 games per player
-- No repeated partnerships within a week
+- Exactly 8 games per player (hard constraint)
+- No repeated partnerships within a week (hard constraint)
+- Opponents varied as much as possible (soft constraint)
+- Byes distributed evenly across players (soft constraint)
 
-**Approach:**
-1. Calculate required rounds: `(num_players × 8) / (courts × 4)`
-2. Use constraint satisfaction with backtracking
-3. Track partnerships in a set, reject any repeat
-4. Distribute byes evenly (secondary optimization)
-5. Target < 10 second generation time
+**Key Math:**
+```
+Given: N players, C courts
+Players per round = C × 4
+Byes per round = N - (C × 4)
+Total games = (N × 8) / 2  (each game has 2 teams of 2)
+Required rounds = (N × 8) / (C × 4)
 
-**Bye Distribution Math:**
-- With N players and C courts
-- Players active per round = C × 4
-- Byes per round = N - (C × 4)
-- Example: 28 players, 6 courts → 4 byes per round
-- Total bye slots across all rounds should be distributed evenly
+Example: 28 players, 6 courts
+- Players per round = 24
+- Byes per round = 4
+- Total games = 112
+- Required rounds = 28 × 8 / 24 = 9.33 → 10 rounds (some players get 9th game as bye)
+```
+
+**Data Structures:**
+```typescript
+// Track state during generation
+type ScheduleState = {
+  partnerships: Set<string>;      // "playerA-playerB" sorted, no duplicates allowed
+  gamesPlayed: Map<string, number>;  // playerId -> count, target is 8
+  byeCount: Map<string, number>;     // playerId -> count, minimize variance
+  opponents: Map<string, Set<string>>; // playerId -> set of opponent IDs (soft: vary these)
+  rounds: Round[];                 // the schedule being built
+}
+
+type Round = {
+  games: Game[];
+  byes: string[];  // player IDs sitting out
+}
+
+type Game = {
+  court: number;
+  team1: [string, string];  // player IDs
+  team2: [string, string];
+}
+```
+
+**Algorithm: Greedy with Shuffle + Retry**
+
+Rather than pure backtracking (slow), use a greedy approach with randomization:
+
+```
+function generateSchedule(playerIds: string[], courts: number): Schedule {
+  const numRounds = Math.ceil((playerIds.length * 8) / (courts * 4));
+
+  for (attempt = 0; attempt < 100; attempt++) {
+    state = initializeState(playerIds);
+    shuffledPlayers = shuffle(playerIds);  // randomize each attempt
+
+    for (round = 0; round < numRounds; round++) {
+      // 1. Select players for this round (those needing games, balance byes)
+      activePlayers = selectActivePlayers(state, courts * 4);
+      byePlayers = playerIds.filter(p => !activePlayers.includes(p));
+
+      // 2. Form teams greedily: pair players who haven't partnered
+      teams = formTeams(activePlayers, state.partnerships);
+      if (teams === null) continue; // couldn't form valid teams, retry round
+
+      // 3. Match teams into games (vary opponents if possible)
+      games = matchTeams(teams, state.opponents, courts);
+
+      // 4. Record round
+      state.rounds.push({ games, byes: byePlayers });
+      updateState(state, games, byePlayers);
+    }
+
+    // Validate: did everyone get exactly 8 games?
+    if (validateSchedule(state)) {
+      return state.rounds;
+    }
+  }
+
+  // If 100 attempts fail, return best effort with warnings
+  return bestEffortSchedule(state);
+}
+
+function formTeams(players: string[], partnerships: Set<string>): Team[] | null {
+  // Greedy pairing: sort by games played (ascending), then pair
+  // For each player, find a valid partner (not already partnered this week)
+
+  available = [...players];
+  teams = [];
+
+  while (available.length >= 2) {
+    player1 = available.shift();
+
+    // Find first available partner not already partnered with player1
+    partnerIdx = available.findIndex(p =>
+      !partnerships.has(partnershipKey(player1, p))
+    );
+
+    if (partnerIdx === -1) return null; // no valid partner, need to retry
+
+    player2 = available.splice(partnerIdx, 1)[0];
+    teams.push([player1, player2]);
+    partnerships.add(partnershipKey(player1, player2));
+  }
+
+  return teams;
+}
+
+function partnershipKey(a: string, b: string): string {
+  return [a, b].sort().join('-');  // consistent ordering
+}
+```
+
+**Why This Works:**
+1. **Greedy + Shuffle** is faster than backtracking for this problem size
+2. **100 retries** with different shuffles finds a valid solution quickly
+3. **Partnership tracking** prevents repeat partners (hard constraint)
+4. **Games played balancing** ensures everyone gets 8 games
+5. **Bye count balancing** distributes rest evenly
+
+**Test Cases for Validation:**
+
+| Players | Courts | Expected Rounds | Games/Player | Byes/Round |
+|---------|--------|-----------------|--------------|------------|
+| 24 | 6 | 8 | 8 | 0 |
+| 28 | 6 | 10 | 8 | 4 |
+| 32 | 6 | 11 | 8 | 8 |
+| 24 | 4 | 12 | 8 | 8 |
+| 32 | 8 | 8 | 8 | 0 |
+
+**Edge Cases:**
+- **24 players, 6 courts**: Perfect fit, no byes needed
+- **25 players, 6 courts**: 1 bye per round, 9-10 rounds
+- **32 players, 8 courts**: Perfect fit, no byes needed
+- **Odd bye counts**: Some rounds may have different bye counts
+
+**Constraint Relaxation (if algorithm fails):**
+1. First: Relax opponent variety (allow repeat opponents)
+2. Second: Allow slight imbalance in byes (±1 game)
+3. Never relax: partnership constraint (no repeat partners)
+4. Never relax: 8 games per player
+
+**File Location:** `src/lib/scheduling/generateSchedule.ts`
 
 ### Performance
 - Schedule generation: < 10 seconds
