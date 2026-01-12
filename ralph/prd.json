@@ -22,7 +22,7 @@
         "Verify in browser: app loads at localhost:3000"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

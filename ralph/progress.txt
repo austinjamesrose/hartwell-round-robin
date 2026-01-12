@@ -3,6 +3,25 @@ Started: 2026-01-11
 ---
 
 ## Codebase Patterns
-(Patterns discovered during iterations will be added here)
+- Supabase clients in src/lib/supabase/ - client.ts (browser), server.ts (RSC/Route Handlers), middleware.ts
+- Database types defined in src/types/database.ts - must match supabase/schema.sql
+- UI components from shadcn/ui in src/components/ui/
+- Use `npm run lint` to check ESLint (must pass with 0 errors/warnings)
+- Use `npm run build` to verify TypeScript and production build
+- Environment variables in .env.local (copy from .env.local.example)
 
+---
+
+## 2026-01-11 - US-000
+- Project setup completed (was partially pre-configured)
+- Updated homepage with proper app Card layout
+- Added .gitignore file
+- Fixed unused import warning in src/lib/supabase/server.ts
+- Verified npm run dev and npm run build work
+- Files changed: .gitignore (new), src/app/page.tsx, src/lib/supabase/server.ts
+- **Learnings for future iterations:**
+  - Project uses Next.js 16.1.1 (Turbopack) with App Router
+  - Tailwind v4 with oklch colors in globals.css
+  - Database schema in supabase/schema.sql ready to apply to Supabase
+  - ESLint configured via eslint.config.mjs (flat config format)
 ---
