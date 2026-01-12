@@ -104,3 +104,17 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - MIN_AVAILABLE_PLAYERS (24) and MAX_AVAILABLE_PLAYERS (32) constants from `src/lib/availability/validation.ts`
   - Component tests for this component don't need complex Supabase mocking since generation is client-side
 ---
+
+## 2026-01-12 04:54 CST - US-V4-005
+- What was implemented:
+  - Simplified `findActiveWeekId()` function to return the earliest non-completed week (by week_number)
+  - Previously the function was overly complex, tracking "closest to today" logic that wasn't needed
+  - Created comprehensive test file with 12 tests covering tab styling, navigation, active week label, and findActiveWeekId logic
+- Files changed:
+  - src/app/dashboard/seasons/[id]/week-utils.ts (simplified findActiveWeekId function)
+  - src/app/dashboard/seasons/[id]/week-navigation.test.tsx (new - 12 tests)
+- **Learnings for future iterations:**
+  - Radix Tabs uses `data-state="active"` attribute for selected tab styling
+  - WeekNavigation renders both mobile and desktop views, so tests should use `getAllByText` when searching for week numbers
+  - `findActiveWeekId` sorts by week_number to handle unsorted input arrays correctly
+---
