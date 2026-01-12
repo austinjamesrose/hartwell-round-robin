@@ -35,6 +35,7 @@ import {
 } from "@/lib/scheduling/swap";
 import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
 import { exportSchedulePdf } from "@/lib/pdf/exportSchedulePdf";
+import { exportScoreSheetsPdf } from "@/lib/pdf/exportScoreSheetsPdf";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
 
@@ -698,6 +699,19 @@ export function ScheduleViewer({
             <span>games/player</span>
           </div>
           <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              exportScoreSheetsPdf({
+                scheduleInfo,
+                games,
+                players,
+              });
+            }}
+          >
+            Export Score Sheets
+          </Button>
           <Button
             variant="outline"
             size="sm"
