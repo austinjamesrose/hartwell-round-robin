@@ -11,6 +11,14 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import {
   findPlayerPosition,
@@ -83,6 +91,10 @@ export function ScheduleViewer({
 
   // Track if we have unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Finalize dialog state
+  const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // Can edit only in draft mode
   const canEdit = weekStatus === "draft";
@@ -337,6 +349,32 @@ export function ScheduleViewer({
     setError(null);
   }
 
+  // Finalize the schedule (change week status from draft to finalized)
+  async function handleFinalizeSchedule() {
+    setIsFinalizing(true);
+    setError(null);
+
+    const supabase = createClient();
+
+    try {
+      const { error: updateError } = await supabase
+        .from("weeks")
+        .update({ status: "finalized" })
+        .eq("id", weekId);
+
+      if (updateError) {
+        throw new Error(`Failed to finalize schedule: ${updateError.message}`);
+      }
+
+      setShowFinalizeDialog(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finalize schedule");
+    } finally {
+      setIsFinalizing(false);
+    }
+  }
+
   // Check if a player is selected
   function isPlayerSelected(roundNumber: number, playerId: string): boolean {
     return (
@@ -569,6 +607,64 @@ export function ScheduleViewer({
             </div>
           </details>
         </div>
+
+        {/* Finalize button (only for draft schedules) */}
+        {canEdit && !hasUnsavedChanges && (
+          <div className="border-t pt-4 mt-4">
+            <Button
+              onClick={() => setShowFinalizeDialog(true)}
+              className="w-full sm:w-auto"
+            >
+              Finalize Schedule
+            </Button>
+          </div>
+        )}
+
+        {/* Finalize confirmation dialog */}
+        <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Finalize Schedule?</DialogTitle>
+              <DialogDescription>
+                This will lock the schedule and make it ready for play. You will not
+                be able to make further changes to player assignments after
+                finalizing.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Show warnings if any */}
+            {warnings.length > 0 && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertDescription className="text-yellow-800">
+                  <p className="font-medium mb-2">
+                    The schedule has the following warnings:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {warnings.map((warning, idx) => (
+                      <li key={idx}>{warning}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowFinalizeDialog(false)}
+                disabled={isFinalizing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleFinalizeSchedule}
+                disabled={isFinalizing}
+              >
+                {isFinalizing ? "Finalizing..." : "Finalize Schedule"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
