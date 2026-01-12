@@ -279,4 +279,100 @@ describe("ScoreEntry", () => {
       expect(screen.getByText("Score Entry")).toBeInTheDocument();
     });
   });
+
+  describe("progress indicator", () => {
+    it("shows progress text with correct counts", () => {
+      const games = [
+        createMockGame({ team1_score: 11, team2_score: 9 }),
+        createMockGame({ team1_score: 11, team2_score: 7 }),
+        createMockGame({ team1_score: null, team2_score: null }),
+        createMockGame({ team1_score: null, team2_score: null }),
+        createMockGame({ team1_score: null, team2_score: null }),
+      ];
+
+      render(
+        <ScoreEntry
+          games={games}
+          players={mockPlayers}
+          weekStatus="finalized"
+        />
+      );
+
+      const progressText = screen.getByTestId("progress-text");
+      expect(progressText).toHaveTextContent("2 of 5 games completed (40%)");
+    });
+
+    it("shows CheckCircle icon when 100% complete", () => {
+      const games = [
+        createMockGame({ team1_score: 11, team2_score: 9 }),
+        createMockGame({ team1_score: 11, team2_score: 7 }),
+        createMockGame({ team1_score: 8, team2_score: 11 }),
+      ];
+
+      render(
+        <ScoreEntry
+          games={games}
+          players={mockPlayers}
+          weekStatus="finalized"
+        />
+      );
+
+      expect(screen.getByTestId("progress-complete-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("progress-text")).toHaveTextContent("100%");
+    });
+
+    it("does not show CheckCircle icon when not 100% complete", () => {
+      const games = [
+        createMockGame({ team1_score: 11, team2_score: 9 }),
+        createMockGame({ team1_score: null, team2_score: null }),
+      ];
+
+      render(
+        <ScoreEntry
+          games={games}
+          players={mockPlayers}
+          weekStatus="finalized"
+        />
+      );
+
+      expect(screen.queryByTestId("progress-complete-icon")).not.toBeInTheDocument();
+    });
+
+    it("renders progress bar with correct width", () => {
+      const games = [
+        createMockGame({ team1_score: 11, team2_score: 9 }),
+        createMockGame({ team1_score: null, team2_score: null }),
+      ];
+
+      render(
+        <ScoreEntry
+          games={games}
+          players={mockPlayers}
+          weekStatus="finalized"
+        />
+      );
+
+      const progressBar = screen.getByTestId("progress-bar");
+      // 1 of 2 = 50%
+      expect(progressBar).toHaveStyle({ width: "50%" });
+    });
+
+    it("shows 0% progress when no games completed", () => {
+      const games = [
+        createMockGame({ team1_score: null, team2_score: null }),
+        createMockGame({ team1_score: null, team2_score: null }),
+      ];
+
+      render(
+        <ScoreEntry
+          games={games}
+          players={mockPlayers}
+          weekStatus="finalized"
+        />
+      );
+
+      expect(screen.getByTestId("progress-text")).toHaveTextContent("0 of 2 games completed (0%)");
+      expect(screen.getByTestId("progress-bar")).toHaveStyle({ width: "0%" });
+    });
+  });
 });

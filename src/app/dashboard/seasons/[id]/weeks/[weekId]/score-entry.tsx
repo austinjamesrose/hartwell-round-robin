@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,6 +30,7 @@ import {
   getFilterSummary,
   getDefaultFilterState,
 } from "@/lib/games/filters";
+import { calculateProgress } from "@/lib/games/progress";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -142,6 +144,9 @@ export function ScoreEntry({
     () => getFilterSummary(filteredGames),
     [filteredGames]
   );
+
+  // Calculate overall progress (all games, not filtered)
+  const progress = useMemo(() => calculateProgress(games), [games]);
 
   // Group filtered games by round (for display structure)
   // When filtering by court, we still group by round for visual organization
@@ -347,6 +352,25 @@ export function ScoreEntry({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Progress Indicator */}
+        <div className="space-y-2" data-testid="progress-section">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium" data-testid="progress-text">
+              {progress.completed} of {progress.total} games completed ({progress.percentage}%)
+            </span>
+            {progress.percentage === 100 && (
+              <CheckCircle className="h-4 w-4 text-green-500" data-testid="progress-complete-icon" />
+            )}
+          </div>
+          <div className="h-2 w-full rounded-full bg-gray-200" data-testid="progress-bar-container">
+            <div
+              className="h-full rounded-full bg-green-500 transition-all duration-300"
+              style={{ width: `${progress.percentage}%` }}
+              data-testid="progress-bar"
+            />
+          </div>
+        </div>
+
         {/* Filter Controls */}
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
