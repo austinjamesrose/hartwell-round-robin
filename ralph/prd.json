@@ -46,7 +46,7 @@
         "Run: npm run test -- validation.test.ts (all tests pass)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Mock Supabase client in tests. Create src/lib/players/ directory if needed."
     },
     {

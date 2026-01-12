@@ -26,3 +26,20 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - When mocking Supabase client, use chained mocks: `from().select().eq().ilike()`
   - Form validation on blur requires both calling field.onBlur() and custom handler
 ---
+
+## 2026-01-12 04:36 CST - US-V4-002
+- What was implemented:
+  - Added `validatePlayerNameForDuplicate()` function for case-insensitive duplicate player name checking
+  - Added `normalizePlayerName()` helper to trim whitespace and collapse multiple spaces
+  - Integrated validation into RosterManager component with onBlur and onSubmit checks
+  - Added inline warning message with option to add existing player to season instead
+  - Submit button disabled when name is invalid or validation in progress
+- Files changed:
+  - src/lib/players/validation.ts (added validatePlayerNameForDuplicate, normalizePlayerName, and types)
+  - src/lib/players/validation.test.ts (added 14 tests for duplicate detection and normalization)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added validation UI and handlers)
+- **Learnings for future iterations:**
+  - Player validation pattern mirrors season validation but adds `normalizePlayerName()` for space collapsing
+  - When showing duplicate warning, provide option to add existing player to roster as alternative action
+  - Use regex `/\s+/g` to collapse multiple spaces to single space
+---
