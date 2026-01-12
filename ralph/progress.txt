@@ -148,3 +148,23 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - `new Date(year, month-1, day)` creates a local date without timezone conversion
   - When fixing timezone bugs, existing tests may have wrong expected values that were "correct" for the buggy code
 ---
+
+## 2026-01-12 05:06 CST - US-V4-007
+- What was implemented:
+  - Created `/dashboard/seasons/[id]/roster/page.tsx` - server component for roster management
+  - Created `/dashboard/seasons/[id]/schedule/page.tsx` - server component with week listing and navigation
+  - Created `/dashboard/seasons/[id]/leaderboard/page.tsx` - server component for player rankings
+  - Updated `[id]/page.tsx` to redirect to `/schedule` by default (simplified to just redirect)
+  - Each page fetches its own data independently (server component pattern)
+  - Extracted existing RosterManager and Leaderboard components used as-is in new pages
+- Files changed:
+  - src/app/dashboard/seasons/[id]/roster/page.tsx (new - roster management page)
+  - src/app/dashboard/seasons/[id]/schedule/page.tsx (new - week schedule listing)
+  - src/app/dashboard/seasons/[id]/leaderboard/page.tsx (new - player rankings)
+  - src/app/dashboard/seasons/[id]/page.tsx (simplified to redirect only)
+- **Learnings for future iterations:**
+  - Next.js dynamic routes with `[id]` need proper quoting in shell commands due to bracket characters
+  - Server components can import client components (e.g., RosterManager) but not vice versa
+  - Each route page can do its own data fetching - good for code splitting and isolation
+  - redirect() from next/navigation doesn't return, so no need for further code after it
+---

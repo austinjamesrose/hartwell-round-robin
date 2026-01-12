@@ -185,7 +185,7 @@
         "Run: npm run build (build succeeds with new routes)"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "This sets up the route structure. Navigation component comes in next story (US-V4-008). Keep components modular so they can be imported into new pages."
     },
     {
