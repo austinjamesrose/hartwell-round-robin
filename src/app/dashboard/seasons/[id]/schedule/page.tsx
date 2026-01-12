@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { findActiveWeekId } from "../week-utils";
 import { formatDate } from "@/lib/dates/dateUtils";
+import { SeasonNav } from "../components/SeasonNav";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -81,13 +82,16 @@ export default async function SchedulePage({
         </div>
 
         {/* Season Header */}
-        <header className="mb-8">
+        <header className="mb-4">
           <h1 className="text-2xl font-bold">{season.name}</h1>
           <p className="text-muted-foreground">
             Started {formatDate(season.start_date)} • {season.num_weeks} weeks •{" "}
             {season.num_courts} courts
           </p>
         </header>
+
+        {/* Season Navigation */}
+        <SeasonNav seasonId={id} />
 
         {/* Week Schedule */}
         <Card>
