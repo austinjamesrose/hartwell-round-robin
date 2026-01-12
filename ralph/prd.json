@@ -438,7 +438,7 @@
         "Run: npm run test -- forgot-password reset-password (all tests pass)"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": "Mock Supabase auth methods in tests. Email sending requires Supabase dashboard configuration."
     },
     {

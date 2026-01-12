@@ -340,3 +340,27 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Use data-testid for icons to reliably query in tests (lucide icons don't have predictable accessible names)
   - The registration page already has a controlled form via react-hook-form, so real-time validation works via field.value
 ---
+
+## 2026-01-12 05:49 CST - US-V4-016
+- What was implemented:
+  - Added "Forgot password?" link on login page next to password label
+  - Created /forgot-password page with email form to request password reset
+  - Created /reset-password page with new password + confirm password form
+  - Login page shows "Password reset successfully" message when reset=success in URL
+  - Reset page validates session before showing form, handles expired/invalid links
+  - Password validation uses same zod schema as registration (8+ chars, uppercase, lowercase, number)
+  - Created comprehensive test files with 20 tests total (9 for forgot-password, 11 for reset-password)
+  - Wrapped login page content in Suspense boundary for useSearchParams
+- Files changed:
+  - src/app/login/page.tsx (added forgot password link, reset success message, Suspense wrapper)
+  - src/app/forgot-password/page.tsx (new - email form for password reset request)
+  - src/app/forgot-password/page.test.tsx (new - 9 tests)
+  - src/app/reset-password/page.tsx (new - password reset form)
+  - src/app/reset-password/page.test.tsx (new - 11 tests)
+- **Learnings for future iterations:**
+  - Components using useSearchParams must be wrapped in Suspense boundary for static generation
+  - Use vi.hoisted() for mock functions referenced in vi.mock() factory
+  - For async state updates in tests, use screen.findByX to wait for elements to appear
+  - CardTitle is a div, not a heading element - use screen.getByText instead of getByRole("heading")
+  - Mock Supabase auth methods: getSession, resetPasswordForEmail, updateUser, signOut
+---
