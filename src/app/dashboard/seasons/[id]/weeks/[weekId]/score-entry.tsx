@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -11,8 +11,24 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { validateScore, parseScoreInput, getWinningTeam } from "@/lib/scores/validation";
+import {
+  type FilterType,
+  type GameFilterState,
+  getUniqueRounds,
+  getUniqueCourts,
+  applyGameFilter,
+  getFilterSummary,
+  getDefaultFilterState,
+} from "@/lib/games/filters";
 import type { Database } from "@/types/database";
 
 // Types from database
@@ -78,6 +94,34 @@ export function ScoreEntry({
   // Track which games are in edit mode (games with existing scores)
   const [editingGames, setEditingGames] = useState<Set<string>>(new Set());
 
+  // Filter state - defaults to "By Round" with Round 1 selected
+  const [filterState, setFilterState] = useState<GameFilterState>(() =>
+    getDefaultFilterState(games)
+  );
+
+  // Get available rounds and courts for filter dropdowns
+  const availableRounds = useMemo(() => getUniqueRounds(games), [games]);
+  const availableCourts = useMemo(() => getUniqueCourts(games), [games]);
+
+  // Handle filter type change (between "round" and "court")
+  const handleFilterTypeChange = useCallback((newType: FilterType) => {
+    setFilterState({
+      filterType: newType,
+      // Reset to first option when switching filter type
+      selectedValue: newType === "round"
+        ? (availableRounds[0] ?? 1)
+        : (availableCourts[0] ?? 1),
+    });
+  }, [availableRounds, availableCourts]);
+
+  // Handle filter value change (specific round or court number)
+  const handleFilterValueChange = useCallback((value: string) => {
+    setFilterState((prev) => ({
+      ...prev,
+      selectedValue: parseInt(value, 10),
+    }));
+  }, []);
+
   // Create player name lookup map
   const playerNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -87,11 +131,24 @@ export function ScoreEntry({
     return map;
   }, [players]);
 
-  // Group games by round
+  // Apply filter to get displayed games
+  const filteredGames = useMemo(
+    () => applyGameFilter(games, filterState),
+    [games, filterState]
+  );
+
+  // Get filter summary for display
+  const filterSummaryText = useMemo(
+    () => getFilterSummary(filteredGames),
+    [filteredGames]
+  );
+
+  // Group filtered games by round (for display structure)
+  // When filtering by court, we still group by round for visual organization
   const rounds = useMemo((): DisplayRound[] => {
-    // Find all unique round numbers
+    // Find all unique round numbers in filtered games
     const roundNumbers = new Set<number>();
-    for (const game of games) {
+    for (const game of filteredGames) {
       roundNumbers.add(game.round_number);
     }
 
@@ -101,11 +158,11 @@ export function ScoreEntry({
     // Build display rounds
     return sortedRounds.map((roundNumber) => ({
       roundNumber,
-      games: games
+      games: filteredGames
         .filter((g) => g.round_number === roundNumber)
         .sort((a, b) => a.court_number - b.court_number),
     }));
-  }, [games]);
+  }, [filteredGames]);
 
   // Get player name by ID
   function getPlayerName(playerId: string): string {
@@ -290,6 +347,70 @@ export function ScoreEntry({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Filter Controls */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Filter Type Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Filter:</span>
+              <div className="flex rounded-md border">
+                <button
+                  type="button"
+                  onClick={() => handleFilterTypeChange("round")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-l-md transition-colors ${
+                    filterState.filterType === "round"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  data-active={filterState.filterType === "round"}
+                >
+                  By Round
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterTypeChange("court")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-r-md border-l transition-colors ${
+                    filterState.filterType === "court"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  data-active={filterState.filterType === "court"}
+                >
+                  By Court
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Value Dropdown */}
+            <Select
+              value={String(filterState.selectedValue)}
+              onValueChange={handleFilterValueChange}
+            >
+              <SelectTrigger className="w-[140px]" data-testid="filter-dropdown">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {filterState.filterType === "round"
+                  ? availableRounds.map((roundNum) => (
+                      <SelectItem key={roundNum} value={String(roundNum)}>
+                        Round {roundNum}
+                      </SelectItem>
+                    ))
+                  : availableCourts.map((courtNum) => (
+                      <SelectItem key={courtNum} value={String(courtNum)}>
+                        Court {courtNum}
+                      </SelectItem>
+                    ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter Summary */}
+          <div className="text-sm text-muted-foreground" data-testid="filter-summary">
+            {filterSummaryText}
+          </div>
+        </div>
+
         {/* Rounds */}
         {rounds.map((round) => (
           <div key={round.roundNumber} className="space-y-3">
