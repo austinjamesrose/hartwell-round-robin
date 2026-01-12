@@ -93,10 +93,11 @@ export function exportSchedulePdf(data: ExportScheduleData): void {
   const playerMap = createPlayerNameMap(players);
   const rounds = groupByRound(games, byes);
 
-  // Create PDF document (portrait, letter size)
+  // Create PDF document (landscape, letter size)
+  // Landscape gives more horizontal space for player names
   // jsPDF uses 'letter' for US letter size (8.5 x 11 inches)
   const doc = new jsPDF({
-    orientation: "portrait",
+    orientation: "landscape",
     unit: "pt", // points (72 per inch)
     format: "letter",
   });
@@ -143,7 +144,7 @@ export function exportSchedulePdf(data: ExportScheduleData): void {
   y += 20;
 
   // ========== ROUNDS ==========
-  const roundsPerRow = 2; // Two rounds per row in the PDF
+  const roundsPerRow = 1; // One round per row for easier reading
   const columnWidth = contentWidth / roundsPerRow;
   const courtLineHeight = 16;
   const byeLineHeight = 14;
@@ -195,8 +196,8 @@ export function exportSchedulePdf(data: ExportScheduleData): void {
 
         // Team matchup
         doc.setFont("helvetica", "normal");
-        const matchupX = colX + 40;
-        const maxMatchupWidth = columnWidth - 60;
+        const matchupX = colX + 35;
+        const maxMatchupWidth = columnWidth - 50;
 
         // Truncate if necessary
         const matchupText = `${team1}  vs  ${team2}`;

@@ -1,0 +1,541 @@
+# Ralph Progress Log
+Started: 2026-01-11
+---
+
+## Codebase Patterns
+- Supabase clients in src/lib/supabase/ - client.ts (browser), server.ts (RSC/Route Handlers), middleware.ts
+- Database types defined in src/types/database.ts - must match supabase/schema.sql
+- UI components from shadcn/ui in src/components/ui/
+- Use `npm run lint` to check ESLint (must pass with 0 errors/warnings)
+- Use `npm run build` to verify TypeScript and production build
+- Use `npm run test` to run vitest unit tests
+- Environment variables in .env.local (copy from .env.local.example)
+- Auth route logic in src/lib/auth/routes.ts - testable helper functions for middleware
+- Protected routes redirect unauthenticated users to /login
+- Public routes: /, /login, /register, /auth/callback
+- Scheduling algorithm in src/lib/scheduling/generateSchedule.ts - pure function, no database dependency
+
+---
+
+## 2026-01-11 - US-000
+- Project setup completed (was partially pre-configured)
+- Updated homepage with proper app Card layout
+- Added .gitignore file
+- Fixed unused import warning in src/lib/supabase/server.ts
+- Verified npm run dev and npm run build work
+- Files changed: .gitignore (new), src/app/page.tsx, src/lib/supabase/server.ts
+- **Learnings for future iterations:**
+  - Project uses Next.js 16.1.1 (Turbopack) with App Router
+  - Tailwind v4 with oklch colors in globals.css
+  - Database schema in supabase/schema.sql ready to apply to Supabase
+  - ESLint configured via eslint.config.mjs (flat config format)
+---
+
+## 2026-01-11 - US-001
+- Implemented complete authentication flow with Supabase Auth
+- Login page with email/password form and zod validation
+- Registration page with email confirmation flow
+- Auth callback route handler for email verification (/auth/callback)
+- Root middleware for protected routes (redirects unauthenticated to /login)
+- Dashboard page as authenticated landing with logout button
+- Added vitest for unit testing
+- Files created:
+  - src/app/login/page.tsx
+  - src/app/register/page.tsx
+  - src/app/auth/callback/route.ts
+  - src/app/dashboard/page.tsx
+  - src/app/dashboard/logout-button.tsx
+  - src/lib/auth/routes.ts
+  - src/lib/auth/routes.test.ts
+  - middleware.ts
+  - vitest.config.ts
+- **Learnings for future iterations:**
+  - Extract testable logic from middleware into separate modules (src/lib/auth/routes.ts pattern)
+  - react-hook-form with zod resolver for form validation (@hookform/resolvers)
+  - Supabase auth uses exchangeCodeForSession for email confirmation
+  - Authenticated users redirected from /login and /register to /dashboard
+  - Session persists via Supabase SSR cookies automatically
+---
+
+## 2026-01-11 - US-002
+- Created season form with validation (name, start date, weeks 1-12, courts 4-8)
+- Zod schema for validation with trimmed names
+- Auto-creation of week schedules based on season start date
+- Season detail page showing all created weeks with status badges
+- Unit tests for validation rules and calculateWeekDates function
+- Files created:
+  - src/lib/seasons/validation.ts
+  - src/lib/seasons/validation.test.ts
+  - src/app/dashboard/seasons/new/page.tsx
+  - src/app/dashboard/seasons/[id]/page.tsx
+- Files modified:
+  - src/types/database.ts (added Relationships and CompositeTypes for Supabase v2.90)
+- **Learnings for future iterations:**
+  - Database types need `Relationships: []` and `CompositeTypes` for Supabase v2.90+ compatibility
+  - Use explicit type annotations (e.g., `const data: InsertType = {...}`) when Supabase insert types resolve to `never`
+  - Zod `.default()` creates optional input types - use form default values instead for react-hook-form compatibility
+  - `notFound()` from Next.js needs `return notFound()` for proper TypeScript control flow narrowing
+  - Season routes: /dashboard/seasons/new (create), /dashboard/seasons/[id] (view)
+---
+
+## 2026-01-11 - US-003
+- Updated dashboard to display all seasons owned by the admin
+- Each season shows: name, start date, status (active/completed/archived), current week
+- Seasons are clickable cards that navigate to /dashboard/seasons/[id]
+- Added prominent "Create New Season" button at top of dashboard
+- getCurrentWeek() helper calculates which week is active based on today's date
+- Files modified:
+  - src/app/dashboard/page.tsx (complete rewrite with season list)
+  - src/types/database.ts (added Relationships for seasons/weeks join)
+- **Learnings for future iterations:**
+  - Supabase join queries with `select('*, weeks(*)')` require relationship types defined in database.ts
+  - Use `as unknown as Type` for intermediate casting when Supabase types don't match actual runtime structure
+  - RLS is already enforced on seasons table via `auth.uid() = admin_id` policy - no additional code needed
+---
+
+## 2026-01-11 - US-004
+- Added roster management to season detail page
+- Player pool dropdown with Select component to add existing players
+- "Create & Add" form for creating new players and adding to roster immediately
+- Duplicate player prevention via Set lookup and database unique constraint
+- Roster displays alphabetically sorted with player count
+- Unit tests for validation schemas and helper functions
+- Files created:
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (client component)
+  - src/lib/players/validation.ts
+  - src/lib/players/validation.test.ts
+  - src/components/ui/select.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (fetch players, add RosterManager)
+- **Learnings for future iterations:**
+  - Use `npx shadcn@latest add <component> -y` to add new shadcn UI components
+  - Supabase unique constraint violations return error code "23505"
+  - Join queries: `select('player_id, players(*)')` returns nested object, needs `sp.players as unknown as Player`
+  - Validation helpers like `isPlayerInSeason()` should use Set<string> for O(1) lookup
+---
+
+## 2026-01-11 - US-005
+- Added remove from season button to each player row in roster
+- Block player removal if they have game history (shows "Player has X games recorded")
+- Fetch player game counts by querying games table for all 4 player columns
+- Added checkPlayerRemoval() validation function with unit tests
+- Remove button disabled and shows tooltip when player has games
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (fetch game counts, pass to RosterManager)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (add remove button, handle removal)
+  - src/lib/players/validation.ts (add checkPlayerRemoval function)
+  - src/lib/players/validation.test.ts (add tests for checkPlayerRemoval)
+- **Learnings for future iterations:**
+  - Games table has 4 player columns: team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id
+  - To count games for a player in a season, first get week IDs for the season, then query games
+  - Use Record<string, number> to pass player game counts from server to client component
+---
+
+## 2026-01-11 - US-005b
+- Created global player pool management page at /dashboard/players
+- Lists all players the admin has ever created, alphabetically
+- Shows which seasons each player is assigned to via Badge links
+- Inline player name editing with Enter/Escape keyboard support
+- Players cannot be deleted (no delete button - preserves historical data)
+- Added "Manage Players" button on dashboard
+- Files created:
+  - src/app/dashboard/players/page.tsx (server component)
+  - src/app/dashboard/players/player-pool-manager.tsx (client component)
+  - src/components/ui/badge.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/page.tsx (added Manage Players button)
+- **Learnings for future iterations:**
+  - To get players with their seasons: query players, season_players, and seasons, then join in code
+  - Export types from page.tsx for client components (e.g., PlayerWithSeasons)
+  - validatePlayerName() helper useful for inline edit validation
+---
+
+## 2026-01-11 - US-006
+- Created week navigation with tabs (desktop) and prev/next buttons (mobile)
+- Week management page at /dashboard/seasons/[id]/weeks/[weekId]
+- Weeks show status (draft/finalized/completed), date, and week number
+- Active week highlighted with blue ring based on date proximity and completion status
+- Season detail page now links to week management with clickable weeks
+- "Manage Active Week" button for quick access
+- Files created:
+  - src/app/dashboard/seasons/[id]/week-navigation.tsx (client component)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+  - src/components/ui/tabs.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx (weeks now clickable, imports findActiveWeekId)
+- **Learnings for future iterations:**
+  - findActiveWeekId() exported from week-navigation.tsx for reuse in server components
+  - Active week calculation: non-completed week closest to today (prefer upcoming over past)
+  - Shadcn tabs use radix-ui/react-tabs under the hood
+  - Week routes: /dashboard/seasons/[id]/weeks/[weekId]
+---
+
+## 2026-01-11 - US-007
+- Created AvailabilityManager component for toggling player availability per week
+- Switch toggle for each roster player with optimistic UI updates
+- Available count displayed with validation (24-32 range required)
+- Visual warning states: red for invalid count, yellow for near-boundary
+- Default all players to available if no database record exists
+- Upsert pattern for creating/updating availability records
+- Validation module with constants MIN_AVAILABLE_PLAYERS=24, MAX_AVAILABLE_PLAYERS=32
+- Unit tests for availability count validation
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/availability-manager.tsx
+  - src/lib/availability/validation.ts
+  - src/lib/availability/validation.test.ts
+  - src/components/ui/switch.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (fetch roster/availability, add AvailabilityManager)
+- **Learnings for future iterations:**
+  - player_availability table has unique constraint on (week_id, player_id) - use upsert with onConflict
+  - Export interface types from client components for use in server components (e.g., PlayerAvailability)
+  - Use Map for local state with optimistic updates, then router.refresh() for server sync
+  - Validation constants should be exported for reuse across components
+---
+
+## 2026-01-11 - US-008a
+- Implemented schedule generation algorithm in src/lib/scheduling/generateSchedule.ts
+- Greedy algorithm with shuffle + retry approach (100 attempts max)
+- Hard constraints enforced: exactly 8 games per player, no repeat partnerships
+- Soft constraints optimized: vary opponents, distribute byes evenly
+- Partnership tracking with sorted "playerA-playerB" keys in Set<string>
+- State tracking: gamesPlayed, byeCount, opponents per player
+- Configurable court count (4-8), supports 24-32 players
+- Helper functions: partnershipKey, calculateExpectedRounds, calculateByesPerRound
+- validateScheduleConstraints() for post-generation or post-edit validation
+- Files created:
+  - src/lib/scheduling/generateSchedule.ts
+  - src/lib/scheduling/generateSchedule.test.ts
+- **Learnings for future iterations:**
+  - Schedule algorithm is pure function (no database), just needs player IDs and court count
+  - Use selectActivePlayers() to prioritize players who need more games and fewer byes
+  - formTeams() returns null if no valid partners available (triggers retry)
+  - matchTeams() tries to vary opponents but doesn't fail if repeats occur
+  - Generate warnings for constraint relaxation rather than failing completely
+---
+
+## 2026-01-11 - US-008b
+- Created ScheduleGenerator client component for generating weekly schedules
+- Generate Schedule button visible on week management page
+- Button disabled with tooltip when not 24-32 players available
+- Loading spinner while generation runs (uses setTimeout for UI update)
+- Generated schedule displayed in round-by-round format:
+  - Court assignments with team matchups (player names)
+  - Bye players listed per round
+  - Summary stats: total rounds, games, games/player
+- Two-step flow: Generate (preview) then Save to database
+- Saves games to `games` table, byes to `byes` table
+- Stores warnings on week record via schedule_warnings column
+- Supports regeneration (deletes existing games/byes first)
+- Added shadcn tooltip component
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-generator.tsx
+  - src/components/ui/tooltip.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (add ScheduleGenerator, fetch existing games)
+  - package.json (add @radix-ui/react-tooltip)
+- **Learnings for future iterations:**
+  - Use TooltipProvider + Tooltip + TooltipTrigger + TooltipContent for shadcn tooltips
+  - Wrap disabled buttons in <span> for tooltip to work (disabled buttons don't fire events)
+  - Use optimistic UI pattern: generate schedule client-side, display preview, then save on confirm
+  - Games table columns: week_id, round_number, court_number, team1_player1_id, team1_player2_id, etc.
+  - Byes table: week_id, round_number, player_id
+---
+
+## 2026-01-11 - US-008c
+- Implemented two-phase constraint relaxation in schedule generation
+- Phase 1: Try strict mode (no repeat partnerships)
+- Phase 2: If strict fails, try relaxed mode (allow repeats with warnings)
+- Added FormTeamsResult interface to track repeat partnerships during team formation
+- formTeams() now accepts allowRepeatPartnerships parameter
+- attemptGeneration() propagates relaxation setting to formTeams()
+- Created tryGenerateWithMode() helper for phase-based retry logic
+- Warnings generated for: repeat partnerships, uneven bye distribution, game count variance
+- Warnings persist in Schedule object and are saved to weeks.schedule_warnings column
+- Week management page already displays schedule_warnings if present
+- Files modified:
+  - src/lib/scheduling/generateSchedule.ts (two-phase retry, FormTeamsResult type)
+  - src/lib/scheduling/generateSchedule.test.ts (6 new constraint relaxation tests)
+- **Learnings for future iterations:**
+  - Use two-phase approach: strict first, relaxed fallback
+  - Track constraint relaxations as string warnings in Schedule.warnings
+  - The algorithm is robust enough that relaxation rarely triggers for normal configs (24-32 players, 4-8 courts)
+  - When testing constraint relaxation, need to run multiple iterations since algorithm is probabilistic
+---
+
+## 2026-01-11 - US-009
+- Created ScheduleViewer component for displaying saved schedules from database
+- Fetches games and byes from database, groups by round for display
+- Each round shows: court number, Team 1 players (names), Team 2 players (names)
+- Bye players listed per round
+- Summary stats: total rounds, total games, games per player
+- Games-per-player breakdown with constraint violation highlighting (players not at 8 games highlighted in yellow)
+- Schedule warnings displayed in the ScheduleViewer component (consolidated UI)
+- ScheduleGenerator only shown for draft weeks now
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (fetch games/byes, add ScheduleViewer)
+- **Learnings for future iterations:**
+  - Use `details` HTML element for collapsible sections (games per player breakdown)
+  - Games table has round_number and court_number for ordering
+  - The byes table stores round-by-round bye assignments (week_id, round_number, player_id)
+  - ScheduleViewer returns null when no games exist (graceful empty state)
+---
+
+## 2026-01-11 - US-010
+- Implemented manual schedule adjustments (player swapping within rounds)
+- Created swap.ts module with validation logic:
+  - validateSwap(): Ensures valid swap (not same team, not self)
+  - findPlayerPosition(): Locates player in game or bye list
+  - performSwap(): Creates new game/bye data with swapped players
+  - checkSwapViolations(): Detects repeat partnerships and game count violations
+- Enhanced ScheduleViewer with interactive swap UI:
+  - Click player to select (blue highlight)
+  - Click another player in same round to swap
+  - Constraint warnings displayed after swaps
+  - Save/Cancel buttons for unsaved changes
+- Regenerate option already available via ScheduleGenerator for draft weeks
+- Files created:
+  - src/lib/scheduling/swap.ts
+  - src/lib/scheduling/swap.test.ts (18 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (major rewrite for swap support)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (pass weekId to ScheduleViewer)
+- **Learnings for future iterations:**
+  - TypeScript discriminated unions need early extraction (const loc = pos.location) for proper narrowing
+  - Use partnershipKey() from generateSchedule.ts for consistent partnership tracking
+  - Optimistic UI updates with local state, then router.refresh() on save
+  - Swaps only allowed within same round (cross-round would break game counts)
+---
+
+## 2026-01-11 - US-011
+- Added finalize button to ScheduleViewer component for draft schedules
+- Confirmation dialog with DialogContent from shadcn/ui
+- Shows constraint warnings in dialog if any exist
+- Updates week status from "draft" to "finalized" via Supabase
+- Schedule becomes read-only after finalization (canEdit = weekStatus === "draft" already enforces this)
+- Button hidden when there are unsaved swap changes
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+- **Learnings for future iterations:**
+  - Dialog component from shadcn/ui uses controlled state (open, onOpenChange props)
+  - Finalize only changes week status; score entry will be enabled in US-012
+  - The existing canEdit check already makes schedule read-only when finalized
+---
+
+## 2026-01-11 - US-011b
+- Added Unfinalize button to ScheduleViewer for finalized schedules
+- Button disabled with tooltip when any scores have been recorded
+- Confirmation dialog for unfinalize action
+- Created validation module at src/lib/weeks/validation.ts:
+  - canUnfinalizeWeek(): returns whether unfinalize is allowed + error message
+  - countGamesWithScores(): counts games with both scores set
+- Server component passes gamesWithScoresCount to ScheduleViewer
+- Week status reverts from "finalized" to "draft" on confirm
+- Files created:
+  - src/lib/weeks/validation.ts
+  - src/lib/weeks/validation.test.ts (10 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+- **Learnings for future iterations:**
+  - Games have scores when both team1_score and team2_score are not null
+  - Wrap disabled buttons in <span> for tooltips to work on disabled elements
+  - Validation modules should return both boolean result and human-readable error message
+---
+
+## 2026-01-11 - US-012a
+- Created ScoreEntry component for mobile-friendly score input
+- Games displayed grouped by round with court number, all 4 players, and score inputs
+- Large touch-friendly inputs (56x56px) exceeding 44px minimum requirement
+- Mobile numeric keyboard via inputMode="numeric" and pattern="[0-9]*"
+- Clear visual distinction: Team 1 in blue, Team 2 in orange
+- Green background highlight for games with recorded scores
+- Component only renders for finalized/completed weeks (not draft)
+- Score input clamped to 0-11 range
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (add ScoreEntry component)
+- **Learnings for future iterations:**
+  - Use inputMode="numeric" + pattern="[0-9]*" for mobile numeric keyboard
+  - Use touch-manipulation class for better touch responsiveness
+  - Score inputs track local state but don't save yet (US-012b handles saving)
+  - 56px inputs exceed 44px minimum for touch targets
+---
+
+## 2026-01-11 - US-012b
+- Created score validation module at src/lib/scores/validation.ts
+- validateScore() enforces pickleball rules:
+  - Exactly one team must score 11 (winning score)
+  - Other team must score 0-10
+  - Both scores required
+  - Returns {valid: boolean, error: string | null}
+- getWinningTeam() returns 1, 2, or null for invalid scores
+- parseScoreInput() safely parses string input to number or null
+- Added 52 comprehensive unit tests for validation
+- Enhanced ScoreEntry component:
+  - Save button appears when both scores are entered and differ from saved
+  - Validation runs on save attempt with clear error messages
+  - Error state shows red border on inputs
+  - Game status changes to "completed" on valid save
+  - Loading spinner during save operation
+- Files created:
+  - src/lib/scores/validation.ts
+  - src/lib/scores/validation.test.ts
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- **Learnings for future iterations:**
+  - Score validation: check 11-11 case before computing team1Won/team2Won
+  - Use Map<gameId, error> for per-game error tracking
+  - Use Set<gameId> for tracking which games are currently saving
+  - hasUnsavedChanges() compares local state to database values
+---
+
+## 2026-01-11 - US-013
+- Added edit mode toggle for completed games in ScoreEntry component
+- Completed games show read-only score display with Edit button
+- Clicking Edit re-opens the score input fields with Cancel option
+- Winning team highlighted in green (score box and player names) in read-only mode
+- Same validation rules apply when editing scores
+- Player point totals recalculated automatically via saved game scores
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- **Learnings for future iterations:**
+  - Use Set<gameId> for editingGames state to track which games are in edit mode
+  - getWinningTeam() from validation module useful for UI highlighting
+  - cancelEditing() should reset scoreInputs to original database values
+  - showInputMode logic: !hasRecordedScore OR isEditing for flexible UX
+---
+
+## 2026-01-11 - US-014
+- Added Mark Week Complete functionality to ScheduleViewer component
+- Mark Complete button visible when week status is "finalized"
+- Confirmation dialog shows warning if any games are missing scores
+- Uses canMarkWeekComplete() validation helper to check prerequisites
+- Week status changes from "finalized" to "completed" on confirm
+- Added countGamesMissingScores() and canMarkWeekComplete() to weeks validation module
+- 10 new unit tests for the validation functions (total now 20 in this file)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/lib/weeks/validation.ts
+  - src/lib/weeks/validation.test.ts
+- **Learnings for future iterations:**
+  - Validation functions return objects with multiple fields for flexible UI (canMarkComplete, hasMissingScores, missingScoresCount, errorMessage)
+  - Week can be marked complete even with missing scores (just show warning)
+  - Mark Complete and Unfinalize buttons appear in same section for finalized weeks
+---
+
+## 2026-01-11 - US-015
+- Created leaderboard section in season detail page showing player rankings
+- Created ranking module at src/lib/leaderboard/ranking.ts:
+  - calculateRankings(): sorts players by total points (primary), win % (tiebreaker)
+  - arePlayersTied(): detects ties based on points and win %
+  - formatRank(): returns "T3" for tied rank 3, "3" for non-tied
+  - formatWinPercentage(): formats as "75%" or "62.5%"
+- 27 unit tests for all ranking logic
+- Mobile-optimized Leaderboard component:
+  - Table columns: Rank, Player, Points, Games, Wins, Win%
+  - Top 3 highlighted with gold/silver/bronze backgrounds
+  - Responsive: Games/Wins hidden on mobile, shown below player name
+  - Tied players show same rank with T prefix
+- Season detail page aggregates game scores to build PlayerStats
+- Files created:
+  - src/lib/leaderboard/ranking.ts
+  - src/lib/leaderboard/ranking.test.ts
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/page.tsx
+- **Learnings for future iterations:**
+  - Use Map<playerId, stats> for aggregating player statistics from games
+  - Filter out players with gamesPlayed === 0 from leaderboard
+  - Use void _seasonId pattern for unused props that will be used later
+  - Ranking uses skip-tie approach: 1, 2, T3, T3, 5 (not 1, 2, T3, T3, T3)
+---
+
+## 2026-01-11 - US-016
+- Created player detail page at /dashboard/seasons/[id]/players/[playerId]
+- Player stats summary showing: total points, games played, wins, win %
+- Game history table with columns: Week, Partner, Opponents, Score, W/L
+- Game history sorted by most recent first (week number descending)
+- Winning score highlighted in green, W/L badge shows result
+- Made player names clickable from leaderboard (Link component)
+- Made player names clickable from roster manager (Link component)
+- Files created:
+  - src/app/dashboard/seasons/[id]/players/[playerId]/page.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx (add Link for player names)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (add Link for player names)
+- **Learnings for future iterations:**
+  - Use Supabase .or() filter for querying player in any of 4 game positions
+  - Query format: `team1_player1_id.eq.${id},team1_player2_id.eq.${id},...`
+  - Determine player's team from game data to get correct partner and opponents
+  - Player detail routes: /dashboard/seasons/[id]/players/[playerId]
+---
+
+## 2026-01-11 - US-017
+- Enhanced ScheduleViewer to show scores inline for completed weeks
+- Historical view shows: team names, scores (winner in green), score boxes
+- Card title changes from "Schedule" to "Results" for completed weeks
+- Hide AvailabilityManager for completed weeks (read-only historical data)
+- Hide ScoreEntry for completed weeks (scores shown inline in schedule)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx
+- **Learnings for future iterations:**
+  - Use conditional rendering based on weekStatus to show different UX for draft/finalized/completed
+  - getWinningTeam() helper determines which team scored 11 (winner)
+  - Completed weeks are read-only historical views - hide editing UI
+---
+
+## 2026-01-11 - US-018
+- Created PDF export functionality for weekly schedules using jsPDF
+- Export PDF button added to ScheduleViewer summary section
+- PDF includes: season name, week number, formatted date in header
+- Round-by-round layout with two rounds per row (columns)
+- Each round shows court assignments with team matchups
+- Bye players listed per round in italics
+- Formatted for US Letter (8.5x11") paper with 40pt margins
+- Page footer shows generation timestamp and page numbers
+- Filename sanitizes special characters: SeasonName_WeekN_Schedule.pdf
+- Created integration tests using vi.mock for jsPDF
+- Files created:
+  - src/lib/pdf/exportSchedulePdf.ts
+  - src/lib/pdf/exportSchedulePdf.test.ts (11 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (pass scheduleInfo prop)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (add Export PDF button)
+- **Learnings for future iterations:**
+  - jsPDF uses points (pt) as units - 72 points per inch
+  - Use vi.mock factory with class methods for jsPDF mocking in vitest
+  - Pass scheduleInfo (seasonName, weekNumber, weekDate) from server to client component
+  - truncateText() helper handles long player names that exceed column width
+  - checkNewPage() helper adds page breaks when content exceeds page height
+---
+
+## 2026-01-11 - US-019
+- Created PDF export functionality for season standings using jsPDF
+- Export PDF button added to Leaderboard CardHeader
+- PDF includes: season name, "Standings as of [current date]" header
+- Table format with columns: Rank, Player, Points, Games, Wins, Win%
+- Alternating row backgrounds for readability
+- Top 3 players shown in bold
+- Tied players show "T" prefix (e.g., "T3")
+- Handles pagination for large player lists
+- Empty standings show "No games have been played yet" message
+- Footer shows generation timestamp and page numbers
+- Created integration tests using vi.mock for jsPDF (11 tests)
+- Files created:
+  - src/lib/pdf/exportStandingsPdf.ts
+  - src/lib/pdf/exportStandingsPdf.test.ts
+- Files modified:
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx (add Export PDF button, seasonName prop)
+  - src/app/dashboard/seasons/[id]/page.tsx (pass seasonName to Leaderboard)
+- **Learnings for future iterations:**
+  - Reuse existing ranking types (RankedPlayer, formatRank, formatWinPercentage) from leaderboard module
+  - Table rendering with column alignment requires calculating x positions manually
+  - Use setFillColor + rect for alternating row backgrounds
+  - Pagination: check y position before each row and redraw header on new pages
+---

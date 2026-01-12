@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RosterManager } from "./roster-manager";
-import { findActiveWeekId } from "./week-navigation";
+import { findActiveWeekId } from "./week-utils";
 import { Leaderboard } from "./leaderboard";
 import { Button } from "@/components/ui/button";
 import type { PlayerStats } from "@/lib/leaderboard/ranking";
