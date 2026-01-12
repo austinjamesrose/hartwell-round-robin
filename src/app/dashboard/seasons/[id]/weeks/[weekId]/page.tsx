@@ -15,6 +15,7 @@ import {
   type PlayerAvailability,
 } from "./availability-manager";
 import { ScheduleGenerator } from "./schedule-generator";
+import { ScheduleViewer } from "./schedule-viewer";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -114,14 +115,25 @@ export default async function WeekManagementPage({
     .filter((p) => p.isAvailable)
     .map((p) => ({ id: p.playerId, name: p.playerName }));
 
-  // Check if there's an existing schedule (any games for this week)
-  const { data: existingGamesData } = await supabase
+  // Fetch all games for this week (for schedule display)
+  const { data: gamesData } = await supabase
     .from("games")
-    .select("id")
+    .select("*")
     .eq("week_id", weekId)
-    .limit(1);
+    .order("round_number", { ascending: true })
+    .order("court_number", { ascending: true });
 
-  const hasExistingSchedule = (existingGamesData?.length ?? 0) > 0;
+  const games = gamesData ?? [];
+  const hasExistingSchedule = games.length > 0;
+
+  // Fetch all byes for this week
+  const { data: byesData } = await supabase
+    .from("byes")
+    .select("*")
+    .eq("week_id", weekId)
+    .order("round_number", { ascending: true });
+
+  const byesRecords = byesData ?? [];
 
   return (
     <div className="min-h-screen p-4">
@@ -192,30 +204,25 @@ export default async function WeekManagementPage({
             playerAvailability={playerAvailability}
           />
 
-          {/* Schedule Generation */}
-          <ScheduleGenerator
-            weekId={weekId}
-            numCourts={season.num_courts}
-            availablePlayers={availablePlayers}
-            hasExistingSchedule={hasExistingSchedule}
+          {/* Schedule Generation (only show for draft weeks) */}
+          {currentWeek.status === "draft" && (
+            <ScheduleGenerator
+              weekId={weekId}
+              numCourts={season.num_courts}
+              availablePlayers={availablePlayers}
+              hasExistingSchedule={hasExistingSchedule}
+              weekStatus={currentWeek.status}
+            />
+          )}
+
+          {/* Schedule Viewer (shows saved schedule from database) */}
+          <ScheduleViewer
+            games={games}
+            byes={byesRecords}
+            players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
+            scheduleWarnings={currentWeek.schedule_warnings}
             weekStatus={currentWeek.status}
           />
-
-          {/* Schedule warnings if any */}
-          {currentWeek.schedule_warnings && currentWeek.schedule_warnings.length > 0 && (
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardHeader>
-                <CardTitle className="text-yellow-800">Schedule Warnings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-inside list-disc space-y-1 text-yellow-800">
-                  {currentWeek.schedule_warnings.map((warning, index) => (
-                    <li key={index}>{warning}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
