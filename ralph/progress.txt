@@ -364,3 +364,26 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - CardTitle is a div, not a heading element - use screen.getByText instead of getByRole("heading")
   - Mock Supabase auth methods: getSession, resetPasswordForEmail, updateUser, signOut
 ---
+
+## 2026-01-12 05:54 CST - US-V4-017
+- What was implemented:
+  - Created `src/lib/players/search.ts` with `filterPlayers()` utility function
+  - Case-insensitive partial matching using `toLowerCase().includes()`
+  - Trims whitespace from search query before matching
+  - Added search input with Search icon above player list in roster-manager.tsx
+  - Real-time filtering via useState and useMemo
+  - Clear button (X icon) appears when search has text, clears on click
+  - Shows "No players found" message when filter returns empty but roster has players
+  - Created comprehensive test file with 15 tests for filterPlayers function
+  - Added 8 component tests for search functionality in roster-manager.test.tsx
+- Files changed:
+  - src/lib/players/search.ts (new - filterPlayers utility function)
+  - src/lib/players/search.test.ts (new - 15 tests)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added search UI, icons, state)
+  - src/app/dashboard/seasons/[id]/roster-manager.test.tsx (added 8 search tests)
+- **Learnings for future iterations:**
+  - Use useMemo for filtering computed values to avoid recalculating on every render
+  - Search input appears only when there are players in roster (conditional rendering)
+  - lucide-react provides Search and X icons for common search patterns
+  - Test assertions need to match actual substring behavior ("Jones" does NOT contain "son", it contains "ones")
+---

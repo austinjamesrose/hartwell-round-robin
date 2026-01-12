@@ -465,7 +465,7 @@
         "Run: npm run test -- roster (all tests pass)"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "Extract filterPlayers to a pure function for easy testing."
     },
     {
