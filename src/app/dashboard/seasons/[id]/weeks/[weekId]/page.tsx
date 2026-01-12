@@ -10,9 +10,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { WeekNavigation } from "../../week-navigation";
+import {
+  AvailabilityManager,
+  type PlayerAvailability,
+} from "./availability-manager";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
+type Player = Database["public"]["Tables"]["players"]["Row"];
 
 // Format date for display (e.g., "Jan 15, 2026")
 function formatDate(dateString: string): string {
@@ -70,10 +75,38 @@ export default async function WeekManagementPage({
     return notFound();
   }
 
-  // TODO: In future stories, we'll fetch:
-  // - Player availability for this week
-  // - Games/schedule for this week
-  // - Byes for this week
+  // Fetch players in this season's roster (join through season_players)
+  const { data: seasonPlayersData } = await supabase
+    .from("season_players")
+    .select("player_id, players(*)")
+    .eq("season_id", seasonId);
+
+  // Extract the player data from the join result
+  const rosterPlayers: Player[] =
+    seasonPlayersData?.map((sp) => sp.players as unknown as Player) ?? [];
+
+  // Fetch existing availability records for this week
+  const { data: availabilityData } = await supabase
+    .from("player_availability")
+    .select("id, player_id, is_available")
+    .eq("week_id", weekId);
+
+  // Create a map of player_id -> availability record
+  const availabilityMap = new Map(
+    availabilityData?.map((a) => [a.player_id, a]) ?? []
+  );
+
+  // Build the player availability array
+  // Default: all players are available if no record exists
+  const playerAvailability: PlayerAvailability[] = rosterPlayers.map((player) => {
+    const record = availabilityMap.get(player.id);
+    return {
+      playerId: player.id,
+      playerName: player.name,
+      isAvailable: record?.is_available ?? true, // Default to available
+      availabilityId: record?.id ?? null,
+    };
+  });
 
   return (
     <div className="min-h-screen p-4">
@@ -134,17 +167,15 @@ export default async function WeekManagementPage({
                   <span className="text-muted-foreground">Courts</span>
                   <span>{season.num_courts}</span>
                 </div>
-
-                {/* Placeholder for future functionality */}
-                <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
-                  <p>Schedule management coming soon...</p>
-                  <p className="mt-1 text-sm">
-                    Mark player availability, generate schedule, and enter scores.
-                  </p>
-                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Player Availability */}
+          <AvailabilityManager
+            weekId={weekId}
+            playerAvailability={playerAvailability}
+          />
 
           {/* Schedule warnings if any */}
           {currentWeek.schedule_warnings && currentWeek.schedule_warnings.length > 0 && (
