@@ -174,7 +174,7 @@
         "Verify in browser: toggle 5 players unavailable, confirm count updates"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

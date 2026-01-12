@@ -168,3 +168,26 @@ Started: 2026-01-11
   - Shadcn tabs use radix-ui/react-tabs under the hood
   - Week routes: /dashboard/seasons/[id]/weeks/[weekId]
 ---
+
+## 2026-01-11 - US-007
+- Created AvailabilityManager component for toggling player availability per week
+- Switch toggle for each roster player with optimistic UI updates
+- Available count displayed with validation (24-32 range required)
+- Visual warning states: red for invalid count, yellow for near-boundary
+- Default all players to available if no database record exists
+- Upsert pattern for creating/updating availability records
+- Validation module with constants MIN_AVAILABLE_PLAYERS=24, MAX_AVAILABLE_PLAYERS=32
+- Unit tests for availability count validation
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/availability-manager.tsx
+  - src/lib/availability/validation.ts
+  - src/lib/availability/validation.test.ts
+  - src/components/ui/switch.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (fetch roster/availability, add AvailabilityManager)
+- **Learnings for future iterations:**
+  - player_availability table has unique constraint on (week_id, player_id) - use upsert with onConflict
+  - Export interface types from client components for use in server components (e.g., PlayerAvailability)
+  - Use Map for local state with optimistic updates, then router.refresh() for server sync
+  - Validation constants should be exported for reuse across components
+---
