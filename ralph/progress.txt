@@ -408,3 +408,21 @@ Started: 2026-01-11
   - cancelEditing() should reset scoreInputs to original database values
   - showInputMode logic: !hasRecordedScore OR isEditing for flexible UX
 ---
+
+## 2026-01-11 - US-014
+- Added Mark Week Complete functionality to ScheduleViewer component
+- Mark Complete button visible when week status is "finalized"
+- Confirmation dialog shows warning if any games are missing scores
+- Uses canMarkWeekComplete() validation helper to check prerequisites
+- Week status changes from "finalized" to "completed" on confirm
+- Added countGamesMissingScores() and canMarkWeekComplete() to weeks validation module
+- 10 new unit tests for the validation functions (total now 20 in this file)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx
+  - src/lib/weeks/validation.ts
+  - src/lib/weeks/validation.test.ts
+- **Learnings for future iterations:**
+  - Validation functions return objects with multiple fields for flexible UI (canMarkComplete, hasMissingScores, missingScoresCount, errorMessage)
+  - Week can be marked complete even with missing scores (just show warning)
+  - Mark Complete and Unfinalize buttons appear in same section for finalized weeks
+---
