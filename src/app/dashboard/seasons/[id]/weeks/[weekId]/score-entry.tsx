@@ -271,8 +271,8 @@ export function ScoreEntry({
     });
   }
 
-  // Score entry is only available for finalized schedules
-  if (weekStatus !== "finalized" && weekStatus !== "completed") {
+  // Score entry is only available for finalized schedules (not completed - those show inline scores)
+  if (weekStatus !== "finalized") {
     return null;
   }
 

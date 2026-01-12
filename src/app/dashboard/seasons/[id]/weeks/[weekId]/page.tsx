@@ -203,11 +203,13 @@ export default async function WeekManagementPage({
             </CardContent>
           </Card>
 
-          {/* Player Availability */}
-          <AvailabilityManager
-            weekId={weekId}
-            playerAvailability={playerAvailability}
-          />
+          {/* Player Availability (hide for completed weeks) */}
+          {currentWeek.status !== "completed" && (
+            <AvailabilityManager
+              weekId={weekId}
+              playerAvailability={playerAvailability}
+            />
+          )}
 
           {/* Schedule Generation (only show for draft weeks) */}
           {currentWeek.status === "draft" && (

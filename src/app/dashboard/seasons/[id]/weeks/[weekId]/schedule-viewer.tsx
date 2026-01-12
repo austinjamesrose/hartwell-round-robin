@@ -63,6 +63,14 @@ interface DisplayRound {
   byes: string[]; // player IDs
 }
 
+// Helper to determine winning team from scores
+function getWinningTeam(team1Score: number | null, team2Score: number | null): 1 | 2 | null {
+  if (team1Score === null || team2Score === null) return null;
+  if (team1Score === 11 && team2Score < 11) return 1;
+  if (team2Score === 11 && team1Score < 11) return 2;
+  return null;
+}
+
 // Summary statistics
 interface ScheduleSummary {
   totalRounds: number;
@@ -523,13 +531,15 @@ export function ScheduleViewer({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Schedule</CardTitle>
+        <CardTitle>
+          {weekStatus === "completed" ? "Results" : "Schedule"}
+        </CardTitle>
         <CardDescription>
           {weekStatus === "draft"
             ? "Draft schedule - click players to swap them within a round"
             : weekStatus === "finalized"
               ? "Finalized schedule - ready for score entry"
-              : "Completed week"}
+              : "Historical results for this week - scores are displayed inline"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -612,25 +622,72 @@ export function ScheduleViewer({
 
               {/* Games */}
               <div className="space-y-2">
-                {round.games.map((game) => (
-                  <div
-                    key={game.id}
-                    className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 text-sm items-center bg-muted/50 rounded p-2"
-                  >
-                    <span className="text-muted-foreground text-xs">
-                      Ct {game.court_number}
-                    </span>
-                    <span>
-                      {renderPlayer(round.roundNumber, game.team1_player1_id)} &amp;{" "}
-                      {renderPlayer(round.roundNumber, game.team1_player2_id)}
-                    </span>
-                    <span className="text-muted-foreground text-xs px-2">vs</span>
-                    <span>
-                      {renderPlayer(round.roundNumber, game.team2_player1_id)} &amp;{" "}
-                      {renderPlayer(round.roundNumber, game.team2_player2_id)}
-                    </span>
-                  </div>
-                ))}
+                {round.games.map((game) => {
+                  const hasScores = game.team1_score !== null && game.team2_score !== null;
+                  const winningTeam = hasScores ? getWinningTeam(game.team1_score, game.team2_score) : null;
+                  const showScores = weekStatus === "completed" && hasScores;
+
+                  return (
+                    <div
+                      key={game.id}
+                      className={`text-sm rounded p-2 ${
+                        showScores
+                          ? "bg-green-50 border border-green-200"
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      {showScores ? (
+                        /* Historical view with scores */
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs w-8 shrink-0">
+                            Ct {game.court_number}
+                          </span>
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
+                            <span className={`truncate ${winningTeam === 1 ? "font-medium text-green-700" : ""}`}>
+                              {getPlayerName(game.team1_player1_id)} &amp; {getPlayerName(game.team1_player2_id)}
+                            </span>
+                            <span className={`font-bold px-1 rounded ${
+                              winningTeam === 1
+                                ? "bg-green-100 text-green-700"
+                                : "text-gray-600"
+                            }`}>
+                              {game.team1_score}
+                            </span>
+                          </div>
+                          <span className="text-muted-foreground text-xs px-1">-</span>
+                          <div className="flex-1 min-w-0 flex items-center gap-2 justify-end">
+                            <span className={`font-bold px-1 rounded ${
+                              winningTeam === 2
+                                ? "bg-green-100 text-green-700"
+                                : "text-gray-600"
+                            }`}>
+                              {game.team2_score}
+                            </span>
+                            <span className={`truncate text-right ${winningTeam === 2 ? "font-medium text-green-700" : ""}`}>
+                              {getPlayerName(game.team2_player1_id)} &amp; {getPlayerName(game.team2_player2_id)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Draft/finalized view without inline scores */
+                        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+                          <span className="text-muted-foreground text-xs">
+                            Ct {game.court_number}
+                          </span>
+                          <span>
+                            {renderPlayer(round.roundNumber, game.team1_player1_id)} &amp;{" "}
+                            {renderPlayer(round.roundNumber, game.team1_player2_id)}
+                          </span>
+                          <span className="text-muted-foreground text-xs px-2">vs</span>
+                          <span>
+                            {renderPlayer(round.roundNumber, game.team2_player1_id)} &amp;{" "}
+                            {renderPlayer(round.roundNumber, game.team2_player2_id)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Byes */}
