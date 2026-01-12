@@ -55,3 +55,24 @@ Started: 2026-01-11
   - Authenticated users redirected from /login and /register to /dashboard
   - Session persists via Supabase SSR cookies automatically
 ---
+
+## 2026-01-11 - US-002
+- Created season form with validation (name, start date, weeks 1-12, courts 4-8)
+- Zod schema for validation with trimmed names
+- Auto-creation of week schedules based on season start date
+- Season detail page showing all created weeks with status badges
+- Unit tests for validation rules and calculateWeekDates function
+- Files created:
+  - src/lib/seasons/validation.ts
+  - src/lib/seasons/validation.test.ts
+  - src/app/dashboard/seasons/new/page.tsx
+  - src/app/dashboard/seasons/[id]/page.tsx
+- Files modified:
+  - src/types/database.ts (added Relationships and CompositeTypes for Supabase v2.90)
+- **Learnings for future iterations:**
+  - Database types need `Relationships: []` and `CompositeTypes` for Supabase v2.90+ compatibility
+  - Use explicit type annotations (e.g., `const data: InsertType = {...}`) when Supabase insert types resolve to `never`
+  - Zod `.default()` creates optional input types - use form default values instead for react-hook-form compatibility
+  - `notFound()` from Next.js needs `return notFound()` for proper TypeScript control flow narrowing
+  - Season routes: /dashboard/seasons/new (create), /dashboard/seasons/[id] (view)
+---

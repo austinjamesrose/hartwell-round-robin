@@ -61,7 +61,7 @@
         "Verify in browser: form submits and season appears in list"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
