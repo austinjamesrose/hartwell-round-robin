@@ -168,3 +168,28 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Each route page can do its own data fetching - good for code splitting and isolation
   - redirect() from next/navigation doesn't return, so no need for further code after it
 ---
+
+## 2026-01-12 05:09 CST - US-V4-008
+- What was implemented:
+  - Created SeasonNav component in src/app/dashboard/seasons/[id]/components/
+  - Links to: Roster (/roster), Schedule (/schedule), Leaderboard (/leaderboard)
+  - On mobile (< 768px): Fixed bottom navigation bar with icons
+  - On desktop (>= 768px): Horizontal tabs below season header
+  - Uses lucide-react icons: Users (roster), Calendar (schedule), Trophy (leaderboard)
+  - Current section indicated via data-active attribute and active styling (blue border/text)
+  - Touch targets minimum 44px on mobile (min-h-[44px] min-w-[44px])
+  - Navigation is sticky (fixed bottom on mobile)
+  - Added SeasonNav to roster/page.tsx, schedule/page.tsx, leaderboard/page.tsx
+- Files changed:
+  - src/app/dashboard/seasons/[id]/components/SeasonNav.tsx (new - responsive nav component)
+  - src/app/dashboard/seasons/[id]/components/SeasonNav.test.tsx (new - 14 comprehensive tests)
+  - src/app/dashboard/seasons/[id]/roster/page.tsx (added SeasonNav import and component)
+  - src/app/dashboard/seasons/[id]/schedule/page.tsx (added SeasonNav import and component)
+  - src/app/dashboard/seasons/[id]/leaderboard/page.tsx (added SeasonNav import and component)
+- **Learnings for future iterations:**
+  - Use usePathname() from next/navigation to determine current route for active state
+  - Mock next/navigation in tests with vi.mock() and vi.mocked(usePathname)
+  - Use data-testid for responsive elements to verify presence in DOM
+  - Tailwind responsive classes: md:hidden (show on mobile only), hidden md:block (show on desktop only)
+  - For client components imported into server components, mark with "use client" directive
+---
