@@ -425,7 +425,7 @@
         "Verify in browser: click player name and confirm detail page loads"
       ],
       "priority": 22,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

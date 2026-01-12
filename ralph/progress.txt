@@ -453,3 +453,23 @@ Started: 2026-01-11
   - Use void _seasonId pattern for unused props that will be used later
   - Ranking uses skip-tie approach: 1, 2, T3, T3, 5 (not 1, 2, T3, T3, T3)
 ---
+
+## 2026-01-11 - US-016
+- Created player detail page at /dashboard/seasons/[id]/players/[playerId]
+- Player stats summary showing: total points, games played, wins, win %
+- Game history table with columns: Week, Partner, Opponents, Score, W/L
+- Game history sorted by most recent first (week number descending)
+- Winning score highlighted in green, W/L badge shows result
+- Made player names clickable from leaderboard (Link component)
+- Made player names clickable from roster manager (Link component)
+- Files created:
+  - src/app/dashboard/seasons/[id]/players/[playerId]/page.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/leaderboard.tsx (add Link for player names)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (add Link for player names)
+- **Learnings for future iterations:**
+  - Use Supabase .or() filter for querying player in any of 4 game positions
+  - Query format: `team1_player1_id.eq.${id},team1_player2_id.eq.${id},...`
+  - Determine player's team from game data to get correct partner and opponents
+  - Player detail routes: /dashboard/seasons/[id]/players/[playerId]
+---
