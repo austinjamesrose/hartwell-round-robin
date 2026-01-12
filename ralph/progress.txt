@@ -489,3 +489,28 @@ Started: 2026-01-11
   - getWinningTeam() helper determines which team scored 11 (winner)
   - Completed weeks are read-only historical views - hide editing UI
 ---
+
+## 2026-01-11 - US-018
+- Created PDF export functionality for weekly schedules using jsPDF
+- Export PDF button added to ScheduleViewer summary section
+- PDF includes: season name, week number, formatted date in header
+- Round-by-round layout with two rounds per row (columns)
+- Each round shows court assignments with team matchups
+- Bye players listed per round in italics
+- Formatted for US Letter (8.5x11") paper with 40pt margins
+- Page footer shows generation timestamp and page numbers
+- Filename sanitizes special characters: SeasonName_WeekN_Schedule.pdf
+- Created integration tests using vi.mock for jsPDF
+- Files created:
+  - src/lib/pdf/exportSchedulePdf.ts
+  - src/lib/pdf/exportSchedulePdf.test.ts (11 tests)
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (pass scheduleInfo prop)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (add Export PDF button)
+- **Learnings for future iterations:**
+  - jsPDF uses points (pt) as units - 72 points per inch
+  - Use vi.mock factory with class methods for jsPDF mocking in vitest
+  - Pass scheduleInfo (seasonName, weekNumber, weekDate) from server to client component
+  - truncateText() helper handles long player names that exceed column width
+  - checkNewPage() helper adds page breaks when content exceeds page height
+---
