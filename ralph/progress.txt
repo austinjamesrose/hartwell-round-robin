@@ -15,6 +15,7 @@ Started: Sun Jan 11 22:25:27 CST 2026
 - When mocking Supabase delete with chained `.eq()`, mock returns objects with nested `.eq()` methods
 - Use `vi.hoisted()` for mock variables used in `vi.mock()` factory functions to avoid hoisting issues
 - When testing Radix Dialog, find dialog buttons by `data-variant` attribute rather than index
+- **Date handling**: Use `formatDate()` and `calculateWeekDates()` from `@/lib/dates/dateUtils` for timezone-safe date operations
 ---
 
 ## 2026-01-12 04:29 CST - US-V4-001
@@ -117,4 +118,33 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Radix Tabs uses `data-state="active"` attribute for selected tab styling
   - WeekNavigation renders both mobile and desktop views, so tests should use `getAllByText` when searching for week numbers
   - `findActiveWeekId` sorts by week_number to handle unsorted input arrays correctly
+---
+
+## 2026-01-12 04:59 CST - US-V4-006
+- What was implemented:
+  - Created `src/lib/dates/dateUtils.ts` with timezone-safe date utility functions
+  - Added `formatDate()` - displays YYYY-MM-DD dates without timezone conversion (no off-by-one bugs)
+  - Added `parseDateString()` - extracts year/month/day components from date string
+  - Added `parseFormDate()` - validates and normalizes form date inputs
+  - Added `calculateWeekDates()` - calculates week dates without timezone bugs (replaces old version)
+  - Added `addDays()` - adds/subtracts days from date strings safely
+  - Updated all formatDate usage across dashboard, season, week, and player pages
+  - Updated week-navigation.tsx to use timezone-safe formatDateCompact and formatDateFull
+  - Re-exported calculateWeekDates from validation.ts to maintain backwards compatibility
+  - Fixed existing test that had wrong expected value due to old timezone bug
+- Files changed:
+  - src/lib/dates/dateUtils.ts (new - date utility functions)
+  - src/lib/dates/dateUtils.test.ts (new - 33 comprehensive tests)
+  - src/lib/seasons/validation.ts (re-export calculateWeekDates from dateUtils)
+  - src/lib/seasons/validation.test.ts (fixed date expectation from "2026-03-18" to "2026-03-19")
+  - src/app/dashboard/page.tsx (import formatDate from dateUtils)
+  - src/app/dashboard/seasons/[id]/page.tsx (import formatDate from dateUtils)
+  - src/app/dashboard/seasons/[id]/week-navigation.tsx (use timezone-safe date formatting)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (import formatDate from dateUtils)
+  - src/app/dashboard/seasons/[id]/players/[playerId]/page.tsx (import formatDate from dateUtils)
+- **Learnings for future iterations:**
+  - `new Date("YYYY-MM-DD")` interprets as UTC midnight, causing off-by-one in timezones behind UTC
+  - To display dates timezone-safely, parse components directly from string and format manually
+  - `new Date(year, month-1, day)` creates a local date without timezone conversion
+  - When fixing timezone bugs, existing tests may have wrong expected values that were "correct" for the buggy code
 ---
