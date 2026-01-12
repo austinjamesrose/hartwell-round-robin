@@ -344,3 +344,23 @@ Started: 2026-01-11
   - Wrap disabled buttons in <span> for tooltips to work on disabled elements
   - Validation modules should return both boolean result and human-readable error message
 ---
+
+## 2026-01-11 - US-012a
+- Created ScoreEntry component for mobile-friendly score input
+- Games displayed grouped by round with court number, all 4 players, and score inputs
+- Large touch-friendly inputs (56x56px) exceeding 44px minimum requirement
+- Mobile numeric keyboard via inputMode="numeric" and pattern="[0-9]*"
+- Clear visual distinction: Team 1 in blue, Team 2 in orange
+- Green background highlight for games with recorded scores
+- Component only renders for finalized/completed weeks (not draft)
+- Score input clamped to 0-11 range
+- Files created:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/score-entry.tsx
+- Files modified:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/page.tsx (add ScoreEntry component)
+- **Learnings for future iterations:**
+  - Use inputMode="numeric" + pattern="[0-9]*" for mobile numeric keyboard
+  - Use touch-manipulation class for better touch responsiveness
+  - Score inputs track local state but don't save yet (US-012b handles saving)
+  - 56px inputs exceed 44px minimum for touch targets
+---

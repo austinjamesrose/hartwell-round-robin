@@ -332,7 +332,7 @@
         "Verify in browser on mobile: inputs are easy to tap"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
