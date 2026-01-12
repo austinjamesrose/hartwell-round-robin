@@ -418,3 +418,186 @@ describe("RosterManager - Collapsible Roster", () => {
     expect(localStorageMock.setItem).toHaveBeenCalledWith("roster-collapsed", "false");
   });
 });
+
+describe("RosterManager - Player Search", () => {
+  const mockPlayers = [
+    {
+      id: "player-1",
+      name: "Alice Smith",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "player-2",
+      name: "Bob Jones",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "player-3",
+      name: "Carol White",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "player-4",
+      name: "Alice Johnson",
+      admin_id: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+
+  const defaultProps = {
+    seasonId: "season-1",
+    allPlayers: mockPlayers,
+    rosterPlayers: mockPlayers,
+    playerGameCounts: {},
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.store = {};
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      writable: true,
+    });
+
+    // Setup default mock chain
+    const secondEq = vi.fn().mockResolvedValue({ error: null });
+    const firstEq = vi.fn().mockReturnValue({ eq: secondEq });
+    mockDelete.mockReturnValue({ eq: firstEq });
+    mockFrom.mockReturnValue({
+      delete: mockDelete,
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          ilike: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      }),
+    });
+  });
+
+  it("renders search input when there are players in roster", () => {
+    render(<RosterManager {...defaultProps} />);
+    expect(screen.getByTestId("player-search-input")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search players...")).toBeInTheDocument();
+  });
+
+  it("does not render search input when roster is empty", () => {
+    const emptyProps = {
+      ...defaultProps,
+      rosterPlayers: [],
+    };
+    render(<RosterManager {...emptyProps} />);
+    expect(screen.queryByTestId("player-search-input")).not.toBeInTheDocument();
+  });
+
+  it("filters players as user types (case-insensitive)", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // All players should be visible initially
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    expect(screen.getByText("Bob Jones")).toBeInTheDocument();
+    expect(screen.getByText("Carol White")).toBeInTheDocument();
+    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+
+    // Type in search input
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "alice");
+
+    // Only Alice players should be visible
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+    expect(screen.queryByText("Bob Jones")).not.toBeInTheDocument();
+    expect(screen.queryByText("Carol White")).not.toBeInTheDocument();
+  });
+
+  it("search is case-insensitive (uppercase query)", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "ALICE");
+
+    // Both Alice players should still be visible with uppercase search
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+    expect(screen.queryByText("Bob Jones")).not.toBeInTheDocument();
+  });
+
+  it("shows 'No players found' message when search has no matches", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "xyz");
+
+    // No players found message should be visible
+    expect(screen.getByTestId("no-players-found")).toBeInTheDocument();
+    expect(screen.getByText("No players found")).toBeInTheDocument();
+
+    // All players should be hidden
+    expect(screen.queryByText("Alice Smith")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bob Jones")).not.toBeInTheDocument();
+  });
+
+  it("shows clear button when search input has text", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Clear button should not be visible initially
+    expect(screen.queryByTestId("search-clear-button")).not.toBeInTheDocument();
+
+    // Type in search input
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "alice");
+
+    // Clear button should now be visible
+    expect(screen.getByTestId("search-clear-button")).toBeInTheDocument();
+  });
+
+  it("clear button resets search and shows all players", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    // Type in search input to filter
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "alice");
+
+    // Only Alice players visible
+    expect(screen.queryByText("Bob Jones")).not.toBeInTheDocument();
+
+    // Click clear button
+    const clearButton = screen.getByTestId("search-clear-button");
+    await user.click(clearButton);
+
+    // All players should be visible again
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    expect(screen.getByText("Bob Jones")).toBeInTheDocument();
+    expect(screen.getByText("Carol White")).toBeInTheDocument();
+    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+
+    // Search input should be empty
+    expect(searchInput).toHaveValue("");
+  });
+
+  it("search filters by partial last name match", async () => {
+    const user = userEvent.setup();
+    render(<RosterManager {...defaultProps} />);
+
+    const searchInput = screen.getByTestId("player-search-input");
+    await user.type(searchInput, "son");
+
+    // "son" matches: Alice Johnson (contains "son" in "Johnson")
+    // "Jones" does not contain "son" - it has "ones"
+    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+    expect(screen.queryByText("Bob Jones")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alice Smith")).not.toBeInTheDocument();
+    expect(screen.queryByText("Carol White")).not.toBeInTheDocument();
+  });
+});

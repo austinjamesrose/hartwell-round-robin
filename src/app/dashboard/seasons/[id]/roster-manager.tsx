@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, X, Upload } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -23,6 +23,7 @@ import {
   findExistingPlayer,
   getImportPreviewSummary,
 } from "@/lib/players/bulkImport";
+import { filterPlayers } from "@/lib/players/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -105,6 +106,9 @@ export function RosterManager({
   const [bulkImportText, setBulkImportText] = useState("");
   const [isBulkImporting, setIsBulkImporting] = useState(false);
 
+  // Player search state
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Toggle roster collapse and persist to localStorage
   function toggleRosterCollapse() {
     setIsRosterCollapsed((prev) => {
@@ -133,6 +137,11 @@ export function RosterManager({
       summary,
     };
   }, [bulkImportText, allPlayers]);
+
+  // Filtered roster players based on search query
+  const filteredRosterPlayers = useMemo(() => {
+    return filterPlayers(rosterPlayers, searchQuery);
+  }, [rosterPlayers, searchQuery]);
 
   // Form for creating new player
   const newPlayerForm = useForm<NewPlayerFormValues>({
@@ -652,50 +661,82 @@ export function RosterManager({
             }`}
             data-testid="roster-content"
           >
-            {rosterPlayers.length > 0 ? (
-              <div className="space-y-1">
-                {rosterPlayers
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((player) => {
-                    const gameCount = playerGameCounts[player.id] || 0;
-                    const removalCheck = checkPlayerRemoval(gameCount);
-                    const isRemoving = removingPlayerId === player.id;
-
-                    return (
-                      <div
-                        key={player.id}
-                        className="flex items-center justify-between rounded-lg border p-2"
-                      >
-                        <Link
-                          href={`/dashboard/seasons/${seasonId}/players/${player.id}`}
-                          className="hover:text-blue-600 hover:underline"
-                        >
-                          {player.name}
-                        </Link>
-                        <div className="flex items-center gap-2">
-                          {!removalCheck.canRemove && (
-                            <span className="text-xs text-muted-foreground">
-                              {removalCheck.message}
-                            </span>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveClick(player)}
-                            disabled={!removalCheck.canRemove || isRemoving}
-                            title={
-                              removalCheck.canRemove
-                                ? "Remove from season"
-                                : removalCheck.message
-                            }
-                          >
-                            {isRemoving ? "Removing..." : "Remove"}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* Search input for filtering players */}
+            {rosterPlayers.length > 0 && (
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search players..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                  data-testid="player-search-input"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    data-testid="search-clear-button"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+            )}
+
+            {rosterPlayers.length > 0 ? (
+              filteredRosterPlayers.length > 0 ? (
+                <div className="space-y-1">
+                  {filteredRosterPlayers
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((player) => {
+                      const gameCount = playerGameCounts[player.id] || 0;
+                      const removalCheck = checkPlayerRemoval(gameCount);
+                      const isRemoving = removingPlayerId === player.id;
+
+                      return (
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between rounded-lg border p-2"
+                        >
+                          <Link
+                            href={`/dashboard/seasons/${seasonId}/players/${player.id}`}
+                            className="hover:text-blue-600 hover:underline"
+                          >
+                            {player.name}
+                          </Link>
+                          <div className="flex items-center gap-2">
+                            {!removalCheck.canRemove && (
+                              <span className="text-xs text-muted-foreground">
+                                {removalCheck.message}
+                              </span>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveClick(player)}
+                              disabled={!removalCheck.canRemove || isRemoving}
+                              title={
+                                removalCheck.canRemove
+                                  ? "Remove from season"
+                                  : removalCheck.message
+                              }
+                            >
+                              {isRemoving ? "Removing..." : "Remove"}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground" data-testid="no-players-found">
+                  No players found
+                </p>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">
                 No players added to this season yet.
