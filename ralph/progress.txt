@@ -129,3 +129,22 @@ Started: 2026-01-11
   - To count games for a player in a season, first get week IDs for the season, then query games
   - Use Record<string, number> to pass player game counts from server to client component
 ---
+
+## 2026-01-11 - US-005b
+- Created global player pool management page at /dashboard/players
+- Lists all players the admin has ever created, alphabetically
+- Shows which seasons each player is assigned to via Badge links
+- Inline player name editing with Enter/Escape keyboard support
+- Players cannot be deleted (no delete button - preserves historical data)
+- Added "Manage Players" button on dashboard
+- Files created:
+  - src/app/dashboard/players/page.tsx (server component)
+  - src/app/dashboard/players/player-pool-manager.tsx (client component)
+  - src/components/ui/badge.tsx (shadcn component)
+- Files modified:
+  - src/app/dashboard/page.tsx (added Manage Players button)
+- **Learnings for future iterations:**
+  - To get players with their seasons: query players, season_players, and seasons, then join in code
+  - Export types from page.tsx for client components (e.g., PlayerWithSeasons)
+  - validatePlayerName() helper useful for inline edit validation
+---

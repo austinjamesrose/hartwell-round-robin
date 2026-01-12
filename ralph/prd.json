@@ -137,7 +137,7 @@
         "Verify in browser: edit a player name, confirm it updates in season rosters"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
