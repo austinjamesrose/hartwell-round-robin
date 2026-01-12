@@ -298,3 +298,27 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Landscape letter size is 792x612 points (width x height)
   - Reference existing PDF code (`exportSchedulePdf.ts`) for consistent patterns and mock setup
 ---
+
+## 2026-01-12 05:40 CST - US-V4-014
+- What was implemented:
+  - Created `src/lib/players/bulkImport.ts` with parsing and duplicate detection functions
+  - Added `parsePlayerNames()` to split on newlines/commas, trim whitespace, filter empty entries
+  - Added `findDuplicates()` for case-insensitive duplicate detection against existing player pool
+  - Added `getImportPreviewSummary()` for human-readable preview text
+  - Created Textarea UI component (`src/components/ui/textarea.tsx`)
+  - Added "Bulk Import" button and dialog to roster-manager.tsx
+  - Dialog shows preview of names to import with duplicate warnings
+  - On import: creates new players in players table, adds all to season_players
+  - Toast success message shows count of added players and skipped duplicates
+  - Created comprehensive test file with 23 tests for parsing and duplicate detection
+- Files changed:
+  - src/lib/players/bulkImport.ts (new - parsing and duplicate detection functions)
+  - src/lib/players/bulkImport.test.ts (new - 23 tests)
+  - src/components/ui/textarea.tsx (new - Textarea UI component)
+  - src/app/dashboard/seasons/[id]/roster-manager.tsx (added bulk import UI)
+- **Learnings for future iterations:**
+  - useMemo for computed preview state avoids recalculating on every render
+  - For dialog close, reset state in onOpenChange handler when open becomes false
+  - Supabase error code "23505" is unique constraint violation (duplicate key)
+  - findExistingPlayer helper allows looking up existing player by name for roster membership check
+---

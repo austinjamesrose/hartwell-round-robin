@@ -379,7 +379,7 @@
         "Run: npm run test -- bulkImport.test.ts (all tests pass)"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-V4-016 (toast). Extract parsing logic to pure functions in src/lib/players/bulkImport.ts for testing."
     },
     {
