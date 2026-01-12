@@ -11,11 +11,14 @@ import {
 } from "@/components/ui/card";
 import { RosterManager } from "./roster-manager";
 import { findActiveWeekId } from "./week-navigation";
+import { Leaderboard } from "./leaderboard";
 import { Button } from "@/components/ui/button";
+import type { PlayerStats } from "@/lib/leaderboard/ranking";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
 type Player = Database["public"]["Tables"]["players"]["Row"];
+type Game = Database["public"]["Tables"]["games"]["Row"];
 
 // Format date for display (e.g., "Jan 15, 2026")
 function formatDate(dateString: string): string {
@@ -94,28 +97,74 @@ export default async function SeasonDetailPage({
   // Get all week IDs for this season
   const weekIds = weeks.map((w) => w.id);
 
+  // All games from this season (for game counts)
+  let allGames: Game[] = [];
+
   if (weekIds.length > 0 && rosterPlayers.length > 0) {
-    // Fetch all games from this season's weeks
+    // Fetch all games from this season's weeks (including scores for leaderboard)
     const { data: gamesData } = await supabase
       .from("games")
-      .select("team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id")
+      .select("*")
       .in("week_id", weekIds);
 
+    allGames = (gamesData ?? []) as Game[];
+
     // Count games for each player
-    if (gamesData) {
-      for (const game of gamesData) {
-        const playerIds = [
-          game.team1_player1_id,
-          game.team1_player2_id,
-          game.team2_player1_id,
-          game.team2_player2_id,
-        ];
-        for (const playerId of playerIds) {
-          playerGameCounts[playerId] = (playerGameCounts[playerId] || 0) + 1;
-        }
+    for (const game of allGames) {
+      const playerIds = [
+        game.team1_player1_id,
+        game.team1_player2_id,
+        game.team2_player1_id,
+        game.team2_player2_id,
+      ];
+      for (const playerId of playerIds) {
+        playerGameCounts[playerId] = (playerGameCounts[playerId] || 0) + 1;
       }
     }
   }
+
+  // Build player stats for leaderboard from completed games
+  // Only include games with scores (both team1_score and team2_score are set)
+  const playerMap = new Map<string, Player>(rosterPlayers.map((p) => [p.id, p]));
+  const playerStatsMap = new Map<string, { totalPoints: number; wins: number; gamesPlayed: number }>();
+
+  for (const game of allGames) {
+    // Skip games without scores
+    if (game.team1_score === null || game.team2_score === null) continue;
+
+    const team1Won = game.team1_score > game.team2_score;
+    const team1Score = game.team1_score;
+    const team2Score = game.team2_score;
+
+    // Team 1 players
+    for (const playerId of [game.team1_player1_id, game.team1_player2_id]) {
+      const stats = playerStatsMap.get(playerId) ?? { totalPoints: 0, wins: 0, gamesPlayed: 0 };
+      stats.totalPoints += team1Score;
+      stats.gamesPlayed += 1;
+      if (team1Won) stats.wins += 1;
+      playerStatsMap.set(playerId, stats);
+    }
+
+    // Team 2 players
+    for (const playerId of [game.team2_player1_id, game.team2_player2_id]) {
+      const stats = playerStatsMap.get(playerId) ?? { totalPoints: 0, wins: 0, gamesPlayed: 0 };
+      stats.totalPoints += team2Score;
+      stats.gamesPlayed += 1;
+      if (!team1Won) stats.wins += 1;
+      playerStatsMap.set(playerId, stats);
+    }
+  }
+
+  // Convert to PlayerStats array for leaderboard
+  const playerStats: PlayerStats[] = Array.from(playerStatsMap.entries())
+    .map(([playerId, stats]) => ({
+      playerId,
+      playerName: playerMap.get(playerId)?.name ?? "Unknown",
+      totalPoints: stats.totalPoints,
+      gamesPlayed: stats.gamesPlayed,
+      wins: stats.wins,
+    }))
+    .filter((p) => p.gamesPlayed > 0); // Only include players with at least one completed game
 
   return (
     <div className="min-h-screen p-4">
@@ -210,6 +259,9 @@ export default async function SeasonDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {/* Leaderboard */}
+          <Leaderboard seasonId={id} playerStats={playerStats} />
         </div>
       </div>
     </div>
