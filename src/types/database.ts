@@ -46,6 +46,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       players: {
         Row: {
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       season_players: {
         Row: {
@@ -89,6 +91,7 @@ export type Database = {
           player_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       weeks: {
         Row: {
@@ -121,6 +124,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       player_availability: {
         Row: {
@@ -144,6 +148,7 @@ export type Database = {
           is_available?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       games: {
         Row: {
@@ -191,6 +196,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       byes: {
         Row: {
@@ -214,6 +220,7 @@ export type Database = {
           player_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: {
@@ -226,6 +233,9 @@ export type Database = {
       season_status: "active" | "completed" | "archived";
       week_status: "draft" | "finalized" | "completed";
       game_status: "scheduled" | "completed";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 };
