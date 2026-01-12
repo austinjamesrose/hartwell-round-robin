@@ -322,7 +322,7 @@
         "Run: npm run test -- swap (all tests pass)"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-V4-011 (selection mode) and US-V4-016 (toast). Swap modifies local state until Save is clicked."
     },
     {

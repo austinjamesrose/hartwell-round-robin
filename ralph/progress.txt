@@ -259,3 +259,21 @@ Started: Sun Jan 11 22:25:27 CST 2026
   - Test Radix/shadcn components with data-testid attributes for reliable selectors
   - Component tests need full game type (status, updated_at fields) to match database types
 ---
+
+## 2026-01-12 05:31 CST - US-V4-012
+- What was implemented:
+  - Added toast.success() notification after successful swap execution
+  - Added confirmation dialog when clicking Regenerate with existing schedule
+  - Swap execution was already working - enhanced with toast feedback
+  - Unsaved changes indicator and Save button already existed
+  - Added 4 tests for swap execution behavior
+- Files changed:
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.tsx (added toast import and call)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-viewer.test.tsx (added swap execution tests)
+  - src/app/dashboard/seasons/[id]/weeks/[weekId]/schedule-generator.tsx (added regenerate confirm dialog)
+- **Learnings for future iterations:**
+  - Much of swap execution already existed - just needed toast notification
+  - Dialog components from shadcn/radix handle accessibility automatically
+  - ScheduleGenerator and ScheduleViewer are sibling components - shared state would require lifting up to page
+  - For server component pages, shared client state requires client component wrappers
+---
