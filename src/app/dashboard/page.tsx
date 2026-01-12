@@ -112,11 +112,14 @@ export default async function DashboardPage() {
           <LogoutButton />
         </header>
 
-        {/* Create Season CTA */}
-        <div className="mb-6">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-3 mb-6">
           <Link href="/dashboard/seasons/new">
-            <Button size="lg" className="w-full sm:w-auto">
-              + Create New Season
+            <Button size="lg">+ Create New Season</Button>
+          </Link>
+          <Link href="/dashboard/players">
+            <Button size="lg" variant="outline">
+              Manage Players
             </Button>
           </Link>
         </div>
