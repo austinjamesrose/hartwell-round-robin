@@ -1,11 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   newPlayerSchema,
   addPlayerToSeasonSchema,
   isPlayerInSeason,
   validatePlayerName,
   checkPlayerRemoval,
+  normalizePlayerName,
+  validatePlayerNameForDuplicate,
 } from "./validation";
+
+// Mock the Supabase client module
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(),
+}));
+
+// Import the mocked module to control its behavior
+import { createClient } from "@/lib/supabase/client";
 
 describe("newPlayerSchema", () => {
   it("validates a valid player name", () => {
@@ -113,5 +123,164 @@ describe("checkPlayerRemoval", () => {
     // Plural for 0, 2, or more games
     expect(checkPlayerRemoval(2).message).toBe("Player has 2 games recorded");
     expect(checkPlayerRemoval(8).message).toBe("Player has 8 games recorded");
+  });
+});
+
+describe("normalizePlayerName", () => {
+  it("trims leading and trailing whitespace", () => {
+    expect(normalizePlayerName("  John Doe  ")).toBe("John Doe");
+  });
+
+  it("collapses multiple spaces to single space", () => {
+    expect(normalizePlayerName("John  Doe")).toBe("John Doe");
+    expect(normalizePlayerName("John   Doe")).toBe("John Doe");
+    expect(normalizePlayerName("John    Doe")).toBe("John Doe");
+  });
+
+  it("handles combined trimming and collapsing", () => {
+    expect(normalizePlayerName("  John   Doe  ")).toBe("John Doe");
+  });
+
+  it("returns empty string for whitespace-only input", () => {
+    expect(normalizePlayerName("   ")).toBe("");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(normalizePlayerName("")).toBe("");
+  });
+});
+
+describe("validatePlayerNameForDuplicate", () => {
+  const mockAdminId = "test-admin-id";
+
+  // Helper to create a mock Supabase client with configurable response
+  function createMockClient(existingPlayers: { id: string; name: string }[] = []) {
+    return {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockResolvedValue({
+              data: existingPlayers,
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns valid when no duplicate exists", async () => {
+    // No existing players with this name
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validatePlayerNameForDuplicate("John Doe", mockAdminId);
+
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(result.existingPlayer).toBeUndefined();
+  });
+
+  it("returns error when duplicate exists (case-insensitive)", async () => {
+    // Existing player with same name, different case
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "player-1", name: "John Doe" }]) as never
+    );
+
+    const result = await validatePlayerNameForDuplicate("john doe", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A player with this name already exists");
+    expect(result.existingPlayer).toEqual({ id: "player-1", name: "John Doe" });
+  });
+
+  it("collapses multiple spaces and detects duplicate", async () => {
+    // Existing player 'John Doe' should match 'John  Doe' (with multiple spaces)
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "player-1", name: "John Doe" }]) as never
+    );
+
+    const result = await validatePlayerNameForDuplicate("John  Doe", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A player with this name already exists");
+    expect(result.existingPlayer).toEqual({ id: "player-1", name: "John Doe" });
+  });
+
+  it("trims whitespace before comparison", async () => {
+    // Existing player should match input with leading/trailing whitespace
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "player-1", name: "John Doe" }]) as never
+    );
+
+    const result = await validatePlayerNameForDuplicate("  John Doe  ", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A player with this name already exists");
+  });
+
+  it("returns invalid for empty name", async () => {
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validatePlayerNameForDuplicate("", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Player name is required");
+  });
+
+  it("returns invalid for whitespace-only name", async () => {
+    vi.mocked(createClient).mockReturnValue(createMockClient([]) as never);
+
+    const result = await validatePlayerNameForDuplicate("   ", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Player name is required");
+  });
+
+  it("returns valid when database returns error (fails open)", async () => {
+    // Mock a database error
+    vi.mocked(createClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: "Database connection failed" },
+            }),
+          }),
+        }),
+      }),
+    } as never);
+
+    const result = await validatePlayerNameForDuplicate("John Doe", mockAdminId);
+
+    // Should fail open and allow the form to proceed
+    expect(result.valid).toBe(true);
+  });
+
+  it("allows different player names", async () => {
+    // Existing player with a different name
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "player-1", name: "Jane Smith" }]) as never
+    );
+
+    const result = await validatePlayerNameForDuplicate("John Doe", mockAdminId);
+
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("returns existing player info when duplicate found", async () => {
+    vi.mocked(createClient).mockReturnValue(
+      createMockClient([{ id: "player-123", name: "John Doe" }]) as never
+    );
+
+    const result = await validatePlayerNameForDuplicate("John Doe", mockAdminId);
+
+    expect(result.valid).toBe(false);
+    expect(result.existingPlayer).toEqual({ id: "player-123", name: "John Doe" });
   });
 });

@@ -11,6 +11,8 @@ import {
   newPlayerSchema,
   type NewPlayerFormValues,
   checkPlayerRemoval,
+  validatePlayerNameForDuplicate,
+  type PlayerNameValidationResult,
 } from "@/lib/players/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +65,10 @@ export function RosterManager({
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
 
+  // Duplicate player name validation state
+  const [nameValidation, setNameValidation] = useState<PlayerNameValidationResult | null>(null);
+  const [isValidatingName, setIsValidatingName] = useState(false);
+
   // Create a Set of player IDs already in the roster for quick lookup
   const rosterPlayerIds = new Set(rosterPlayers.map((p) => p.id));
 
@@ -76,6 +82,37 @@ export function RosterManager({
       name: "",
     },
   });
+
+  // Validate player name for duplicates
+  async function validateName(name: string) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setNameValidation(null);
+      return;
+    }
+
+    setIsValidatingName(true);
+    const supabase = createClient();
+
+    // Get current user to scope the check to their players
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setIsValidatingName(false);
+      return;
+    }
+
+    const result = await validatePlayerNameForDuplicate(trimmedName, user.id);
+    setNameValidation(result);
+    setIsValidatingName(false);
+  }
+
+  // Handle blur on the name input to trigger validation
+  function handleNameBlur(e: React.FocusEvent<HTMLInputElement>) {
+    validateName(e.target.value);
+  }
 
   // Add an existing player to the season roster
   async function handleAddExistingPlayer() {
@@ -135,6 +172,15 @@ export function RosterManager({
       return;
     }
 
+    // Validate for duplicate name on submit
+    const validationResult = await validatePlayerNameForDuplicate(data.name, user.id);
+    setNameValidation(validationResult);
+
+    if (!validationResult.valid) {
+      setIsCreatingNew(false);
+      return;
+    }
+
     // Create the new player
     const { data: newPlayer, error: createError } = await supabase
       .from("players")
@@ -163,10 +209,50 @@ export function RosterManager({
       return;
     }
 
-    // Reset form and refresh
+    // Reset form, validation state, and refresh
     newPlayerForm.reset();
+    setNameValidation(null);
     router.refresh();
     setIsCreatingNew(false);
+  }
+
+  // Add an existing player (who was detected as duplicate) to the season roster
+  async function handleAddExistingDuplicate() {
+    if (!nameValidation?.existingPlayer) return;
+
+    const playerId = nameValidation.existingPlayer.id;
+
+    // Check if player is already in this season
+    if (rosterPlayerIds.has(playerId)) {
+      setError("This player is already in this season's roster");
+      return;
+    }
+
+    setIsAddingExisting(true);
+    setError(null);
+
+    const supabase = createClient();
+
+    const { error: insertError } = await supabase.from("season_players").insert({
+      season_id: seasonId,
+      player_id: playerId,
+    });
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        setError("This player is already in the season roster");
+      } else {
+        setError(insertError.message);
+      }
+      setIsAddingExisting(false);
+      return;
+    }
+
+    // Reset form, validation state, and refresh
+    newPlayerForm.reset();
+    setNameValidation(null);
+    router.refresh();
+    setIsAddingExisting(false);
   }
 
   // Remove a player from the season roster
@@ -259,23 +345,68 @@ export function RosterManager({
           <Form {...newPlayerForm}>
             <form
               onSubmit={newPlayerForm.handleSubmit(handleCreateNewPlayer)}
-              className="flex gap-2"
+              className="space-y-2"
             >
-              <FormField
-                control={newPlayerForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input placeholder="Enter player name..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isCreatingNew}>
-                {isCreatingNew ? "Creating..." : "Create & Add"}
-              </Button>
+              <div className="flex gap-2">
+                <FormField
+                  control={newPlayerForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormControl>
+                        <Input
+                          placeholder="Enter player name..."
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            handleNameBlur(e);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={
+                    isCreatingNew ||
+                    isValidatingName ||
+                    (nameValidation !== null && !nameValidation.valid)
+                  }
+                >
+                  {isCreatingNew ? "Creating..." : isValidatingName ? "Checking..." : "Create & Add"}
+                </Button>
+              </div>
+              {/* Duplicate player validation message */}
+              {nameValidation && !nameValidation.valid && (
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm">
+                  <p className="font-medium text-yellow-800">
+                    {nameValidation.error}
+                  </p>
+                  {nameValidation.existingPlayer && !rosterPlayerIds.has(nameValidation.existingPlayer.id) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-yellow-700">
+                        Would you like to add &quot;{nameValidation.existingPlayer.name}&quot; to this season instead?
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAddExistingDuplicate}
+                        disabled={isAddingExisting}
+                      >
+                        {isAddingExisting ? "Adding..." : "Add to Season"}
+                      </Button>
+                    </div>
+                  )}
+                  {nameValidation.existingPlayer && rosterPlayerIds.has(nameValidation.existingPlayer.id) && (
+                    <p className="mt-1 text-yellow-700">
+                      This player is already in this season&apos;s roster.
+                    </p>
+                  )}
+                </div>
+              )}
             </form>
           </Form>
         </div>

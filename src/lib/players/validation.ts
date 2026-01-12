@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/client";
 
 // Validation schema for creating a new player
 export const newPlayerSchema = z.object({
@@ -74,4 +75,78 @@ export function checkPlayerRemoval(gameCount: number): PlayerRemovalCheck {
     gameCount: 0,
     message: "Player can be removed from this season",
   };
+}
+
+/**
+ * Result of validating a player name for uniqueness.
+ */
+export type PlayerNameValidationResult = {
+  valid: boolean;
+  error?: string;
+  existingPlayer?: { id: string; name: string };
+};
+
+/**
+ * Normalizes a player name by trimming whitespace and collapsing multiple spaces.
+ *
+ * @param name - The player name to normalize
+ * @returns The normalized name
+ */
+export function normalizePlayerName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Validates that a player name is unique within the admin's player pool.
+ * Uses case-insensitive comparison, trims whitespace, and collapses multiple spaces.
+ *
+ * @param name - The player name to validate
+ * @param adminId - The admin's user ID to scope the check
+ * @returns Promise with validation result including existing player info if found
+ */
+export async function validatePlayerNameForDuplicate(
+  name: string,
+  adminId: string
+): Promise<PlayerNameValidationResult> {
+  // Normalize the name: trim and collapse multiple spaces
+  const normalizedName = normalizePlayerName(name);
+
+  // Empty names are handled by the schema, but we check just in case
+  if (!normalizedName) {
+    return { valid: false, error: "Player name is required" };
+  }
+
+  const supabase = createClient();
+
+  // Query for existing players with matching name (case-insensitive)
+  // Using ilike for case-insensitive matching
+  const { data: existingPlayers, error } = await supabase
+    .from("players")
+    .select("id, name")
+    .eq("admin_id", adminId)
+    .ilike("name", normalizedName);
+
+  if (error) {
+    // If there's a database error, we'll let the form proceed
+    // and catch the duplicate at insert time
+    console.error("Error checking player name uniqueness:", error);
+    return { valid: true };
+  }
+
+  // Check if any existing player has the same name (case-insensitive, with normalized spaces)
+  const duplicate = existingPlayers?.find(
+    (player) =>
+      normalizePlayerName(player.name).toLowerCase() ===
+      normalizedName.toLowerCase()
+  );
+
+  if (duplicate) {
+    return {
+      valid: false,
+      error: "A player with this name already exists",
+      existingPlayer: duplicate,
+    };
+  }
+
+  return { valid: true };
 }
