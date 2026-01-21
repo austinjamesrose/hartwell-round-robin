@@ -31,6 +31,15 @@ export const createSeasonSchema = z.object({
     .int("Number of courts must be a whole number")
     .min(4, "Season must have at least 4 courts")
     .max(8, "Season cannot have more than 8 courts"),
+
+  // Rounds per week: optional, 1-20 when set (null = auto-calculate for 8 games/player)
+  roundsPerWeek: z
+    .number()
+    .int("Rounds per week must be a whole number")
+    .min(1, "Must have at least 1 round")
+    .max(20, "Cannot have more than 20 rounds")
+    .nullable()
+    .optional(),
 });
 
 export type CreateSeasonFormValues = z.infer<typeof createSeasonSchema>;
@@ -41,6 +50,7 @@ export const createSeasonDefaults: CreateSeasonFormValues = {
   startDate: "",
   numWeeks: 7,
   numCourts: 6,
+  roundsPerWeek: null,
 };
 
 // Re-export calculateWeekDates from dateUtils for backwards compatibility

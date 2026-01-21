@@ -29,6 +29,7 @@ CREATE TABLE seasons (
     start_date DATE NOT NULL,
     num_weeks INTEGER NOT NULL DEFAULT 7 CHECK (num_weeks >= 1 AND num_weeks <= 12),
     num_courts INTEGER NOT NULL DEFAULT 6 CHECK (num_courts >= 4 AND num_courts <= 8),
+    rounds_per_week INTEGER DEFAULT NULL CHECK (rounds_per_week IS NULL OR (rounds_per_week >= 1 AND rounds_per_week <= 20)),
     status season_status NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

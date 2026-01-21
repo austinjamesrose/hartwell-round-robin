@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   generateSchedule,
+  calculateExpectedGamesPerPlayer,
   type Schedule,
   type Round,
 } from "@/lib/scheduling/generateSchedule";
@@ -54,6 +55,8 @@ interface ScheduleGeneratorProps {
   hasExistingSchedule: boolean;
   // Current week status
   weekStatus: "draft" | "finalized" | "completed";
+  // Optional fixed rounds per week (null = auto-calculate for 8 games/player)
+  roundsPerWeek?: number | null;
 }
 
 export function ScheduleGenerator({
@@ -62,6 +65,7 @@ export function ScheduleGenerator({
   availablePlayers,
   hasExistingSchedule,
   weekStatus,
+  roundsPerWeek,
 }: ScheduleGeneratorProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -128,7 +132,9 @@ export function ScheduleGenerator({
       // Generate schedule (this runs the algorithm client-side)
       // Use setTimeout to allow UI to update with loading state
       await new Promise((resolve) => setTimeout(resolve, 50));
-      const schedule = generateSchedule(playerIds, numCourts);
+      // Pass roundsPerWeek if configured (undefined triggers auto-calculation)
+      const targetRounds = roundsPerWeek ?? undefined;
+      const schedule = generateSchedule(playerIds, numCourts, targetRounds);
 
       setGeneratedSchedule(schedule);
     } catch (err) {
@@ -296,12 +302,29 @@ export function ScheduleGenerator({
     };
   }
 
+  // Calculate expected games for display
+  const expectedGames = roundsPerWeek
+    ? calculateExpectedGamesPerPlayer(playerCount, numCourts, roundsPerWeek)
+    : { min: 8, max: 8 };
+  const expectedGamesStr = expectedGames.min === expectedGames.max
+    ? `${expectedGames.min}`
+    : `${expectedGames.min}-${expectedGames.max}`;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Schedule Generation</CardTitle>
         <CardDescription>
           Generate a round-robin schedule for {playerCount} available players on {numCourts} courts
+          {roundsPerWeek ? (
+            <span className="block mt-1 text-xs">
+              Fixed: {roundsPerWeek} rounds, ~{expectedGamesStr} games per player
+            </span>
+          ) : (
+            <span className="block mt-1 text-xs">
+              Auto: 8 games per player
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

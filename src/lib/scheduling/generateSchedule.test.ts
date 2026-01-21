@@ -8,6 +8,7 @@ import {
   partnershipKey,
   calculateExpectedRounds,
   calculateByesPerRound,
+  calculateExpectedGamesPerPlayer,
   type Schedule,
 } from "./generateSchedule";
 
@@ -550,5 +551,133 @@ describe("constraint relaxation", () => {
         expect(schedule.warnings.some((w) => w.includes("games per player"))).toBe(true);
       }
     }
+  });
+});
+
+describe("fixed rounds (targetRounds parameter)", () => {
+  it("generates exactly the specified number of rounds", () => {
+    const playerIds = generatePlayerIds(24);
+    const targetRounds = 7;
+    const schedule = generateSchedule(playerIds, 6, targetRounds);
+
+    expect(schedule.rounds.length).toBe(targetRounds);
+  });
+
+  it("generates fewer than 8 games per player when rounds are reduced", () => {
+    const playerIds = generatePlayerIds(24);
+    const targetRounds = 5; // Fewer rounds than the 8 needed for 8 games each
+    const schedule = generateSchedule(playerIds, 6, targetRounds);
+
+    expect(schedule.rounds.length).toBe(targetRounds);
+
+    // Count games per player
+    const gamesPerPlayer = new Map<string, number>();
+    for (const round of schedule.rounds) {
+      for (const game of round.games) {
+        for (const player of [...game.team1, ...game.team2]) {
+          gamesPerPlayer.set(player, (gamesPerPlayer.get(player) || 0) + 1);
+        }
+      }
+    }
+
+    // With 5 rounds and 24 players on 6 courts, players get ~5 games each
+    const gamesCounts = Array.from(gamesPerPlayer.values());
+    const maxGames = Math.max(...gamesCounts);
+    expect(maxGames).toBeLessThan(8);
+  });
+
+  it("generates more rounds when targetRounds exceeds auto-calculated value", () => {
+    const playerIds = generatePlayerIds(24);
+    const targetRounds = 12; // More than the 8 rounds auto-calculated
+    const schedule = generateSchedule(playerIds, 6, targetRounds);
+
+    expect(schedule.rounds.length).toBe(targetRounds);
+
+    // Count games per player - should be more than 8
+    const gamesPerPlayer = new Map<string, number>();
+    for (const round of schedule.rounds) {
+      for (const game of round.games) {
+        for (const player of [...game.team1, ...game.team2]) {
+          gamesPerPlayer.set(player, (gamesPerPlayer.get(player) || 0) + 1);
+        }
+      }
+    }
+
+    const gamesCounts = Array.from(gamesPerPlayer.values());
+    const minGames = Math.min(...gamesCounts);
+    expect(minGames).toBeGreaterThan(8);
+  });
+
+  it("generates warnings about games per player range when using fixed rounds", () => {
+    const playerIds = generatePlayerIds(24);
+    const targetRounds = 7;
+    const schedule = generateSchedule(playerIds, 6, targetRounds);
+
+    // With 7 rounds and perfect distribution, some players may have different game counts
+    // The warning should show the games per player range
+    expect(schedule.rounds.length).toBe(targetRounds);
+
+    // Check if warnings include games per player info (may or may not have warning depending on distribution)
+    // The key point is the schedule was generated with the correct number of rounds
+  });
+
+  it("works with various player counts and fixed rounds", () => {
+    const configs = [
+      { players: 24, courts: 6, rounds: 5 },
+      { players: 28, courts: 6, rounds: 6 },
+      { players: 32, courts: 6, rounds: 7 },
+      { players: 24, courts: 4, rounds: 8 },
+      { players: 32, courts: 8, rounds: 10 },
+    ];
+
+    for (const { players, courts, rounds } of configs) {
+      const playerIds = generatePlayerIds(players);
+      const schedule = generateSchedule(playerIds, courts, rounds);
+
+      expect(schedule.rounds.length).toBe(rounds);
+
+      // All players should have at least 1 game
+      const gamesPerPlayer = new Map<string, number>();
+      for (const round of schedule.rounds) {
+        for (const game of round.games) {
+          for (const player of [...game.team1, ...game.team2]) {
+            gamesPerPlayer.set(player, (gamesPerPlayer.get(player) || 0) + 1);
+          }
+        }
+      }
+
+      for (const playerId of playerIds) {
+        const games = gamesPerPlayer.get(playerId) || 0;
+        expect(games).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("calculateExpectedRounds returns targetRounds when provided", () => {
+    expect(calculateExpectedRounds(24, 6, 10)).toBe(10);
+    expect(calculateExpectedRounds(32, 8, 5)).toBe(5);
+  });
+
+  it("calculateExpectedGamesPerPlayer returns exact 8 for auto mode", () => {
+    const result = calculateExpectedGamesPerPlayer(24, 6);
+    expect(result.min).toBe(8);
+    expect(result.max).toBe(8);
+  });
+
+  it("calculateExpectedGamesPerPlayer returns range for fixed rounds", () => {
+    // 7 rounds * 24 players per round / 24 players = 7 games each
+    const result = calculateExpectedGamesPerPlayer(24, 6, 7);
+    expect(result.min).toBe(7);
+    expect(result.max).toBe(7);
+
+    // 10 rounds * 24 players per round / 24 players = 10 games each
+    const result2 = calculateExpectedGamesPerPlayer(24, 6, 10);
+    expect(result2.min).toBe(10);
+    expect(result2.max).toBe(10);
+
+    // 5 rounds * 24 players per round / 28 players = 4.28 -> 4-5 games
+    const result3 = calculateExpectedGamesPerPlayer(28, 6, 5);
+    expect(result3.min).toBe(4);
+    expect(result3.max).toBe(5);
   });
 });

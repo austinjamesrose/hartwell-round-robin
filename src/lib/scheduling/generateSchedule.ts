@@ -61,7 +61,7 @@ interface GenerationResult {
 // Constants
 // ============================================================================
 
-const GAMES_PER_PLAYER = 8; // Hard constraint: exactly 8 games per player
+const DEFAULT_GAMES_PER_PLAYER = 8; // Default: exactly 8 games per player
 const MAX_ATTEMPTS = 100; // Number of shuffle/retry attempts
 
 // ============================================================================
@@ -114,22 +114,27 @@ function initializeState(playerIds: string[]): ScheduleState {
 /**
  * Selects which players will be active in this round
  * Prioritizes players who need more games and have fewer byes
+ *
+ * @param playerIds - All player IDs
+ * @param state - Current schedule state
+ * @param activeCount - Number of players to select as active
+ * @param maxGamesPerPlayer - Maximum games per player (null = no limit, use for fixed rounds)
  */
 function selectActivePlayers(
   playerIds: string[],
   state: ScheduleState,
-  activeCount: number
+  activeCount: number,
+  maxGamesPerPlayer: number | null = DEFAULT_GAMES_PER_PLAYER
 ): { active: string[]; byes: string[] } {
-  // Sort players by: games needed (descending), then bye count (ascending)
+  // Sort players by: games played (ascending), then bye count (ascending)
+  // This prioritizes players with fewer games
   const sortedPlayers = [...playerIds].sort((a, b) => {
     const gamesA = state.gamesPlayed.get(a) || 0;
     const gamesB = state.gamesPlayed.get(b) || 0;
-    const gamesNeededA = GAMES_PER_PLAYER - gamesA;
-    const gamesNeededB = GAMES_PER_PLAYER - gamesB;
 
-    // First: prioritize players who need more games
-    if (gamesNeededA !== gamesNeededB) {
-      return gamesNeededB - gamesNeededA;
+    // First: prioritize players who have played fewer games
+    if (gamesA !== gamesB) {
+      return gamesA - gamesB;
     }
 
     // Second: prioritize players with fewer byes (they've sat out less)
@@ -138,11 +143,13 @@ function selectActivePlayers(
     return byesA - byesB;
   });
 
-  // Filter out players who already have 8 games
-  const eligiblePlayers = sortedPlayers.filter((p) => {
-    const games = state.gamesPlayed.get(p) || 0;
-    return games < GAMES_PER_PLAYER;
-  });
+  // Filter out players who already have max games (when limit is set)
+  const eligiblePlayers = maxGamesPerPlayer !== null
+    ? sortedPlayers.filter((p) => {
+        const games = state.gamesPlayed.get(p) || 0;
+        return games < maxGamesPerPlayer;
+      })
+    : sortedPlayers;
 
   // Take top players as active, rest are byes
   const active = eligiblePlayers.slice(0, Math.min(activeCount, eligiblePlayers.length));
@@ -313,12 +320,25 @@ function updateState(
 
 /**
  * Validates that the schedule meets hard constraints
+ *
+ * @param state - Current schedule state
+ * @param playerIds - All player IDs
+ * @param targetGamesPerPlayer - Target games per player (null = skip game count validation)
  */
-function validateSchedule(state: ScheduleState, playerIds: string[]): boolean {
-  // Check that all players have exactly 8 games
+function validateSchedule(
+  state: ScheduleState,
+  playerIds: string[],
+  targetGamesPerPlayer: number | null = DEFAULT_GAMES_PER_PLAYER
+): boolean {
+  // When using fixed rounds, we don't require exact game counts
+  if (targetGamesPerPlayer === null) {
+    return true;
+  }
+
+  // Check that all players have exactly the target number of games
   for (const playerId of playerIds) {
     const games = state.gamesPlayed.get(playerId) || 0;
-    if (games !== GAMES_PER_PLAYER) {
+    if (games !== targetGamesPerPlayer) {
       return false;
     }
   }
@@ -350,14 +370,19 @@ function getByeStats(state: ScheduleState): { min: number; max: number; variance
  * @param playerIds - All player IDs
  * @param numCourts - Number of courts available
  * @param allowRepeatPartnerships - If true, allow repeat partnerships as last resort
+ * @param targetRounds - Fixed number of rounds (if provided, overrides auto-calculation)
  */
 function attemptGeneration(
   playerIds: string[],
   numCourts: number,
-  allowRepeatPartnerships: boolean = false
+  allowRepeatPartnerships: boolean = false,
+  targetRounds?: number
 ): GenerationResult {
   const playersPerRound = numCourts * 4;
-  const numRounds = Math.ceil((playerIds.length * GAMES_PER_PLAYER) / playersPerRound);
+  // Use targetRounds if provided, otherwise calculate based on 8 games per player
+  const numRounds = targetRounds ?? Math.ceil((playerIds.length * DEFAULT_GAMES_PER_PLAYER) / playersPerRound);
+  // When using fixed rounds, don't cap games at 8 per player
+  const maxGamesPerPlayer = targetRounds !== undefined ? null : DEFAULT_GAMES_PER_PLAYER;
 
   const state = initializeState(playerIds);
   const constraintsRelaxed: string[] = [];
@@ -365,7 +390,7 @@ function attemptGeneration(
 
   for (let round = 1; round <= numRounds; round++) {
     // Select which players play this round
-    const { active } = selectActivePlayers(playerIds, state, playersPerRound);
+    const { active } = selectActivePlayers(playerIds, state, playersPerRound, maxGamesPerPlayer);
 
     // If we don't have enough players to fill courts, adjust
     if (active.length < 4) {
@@ -406,7 +431,8 @@ function attemptGeneration(
     );
   }
 
-  const success = validateSchedule(state, playerIds);
+  // When using fixed rounds, validation always passes (we accept variable games per player)
+  const success = validateSchedule(state, playerIds, targetRounds !== undefined ? null : DEFAULT_GAMES_PER_PLAYER);
   return { success, state, constraintsRelaxed };
 }
 
@@ -423,12 +449,14 @@ function attemptGeneration(
  *
  * @param playerIds - Array of player IDs (must be 24-32 players)
  * @param numCourts - Number of courts available (4-8)
+ * @param targetRounds - Optional fixed number of rounds (overrides auto-calculation for 8 games/player)
  * @returns Schedule with rounds and any warnings
  * @throws Error if player count is out of valid range
  */
 export function generateSchedule(
   playerIds: string[],
-  numCourts: number
+  numCourts: number,
+  targetRounds?: number
 ): Schedule {
   // Validate inputs
   if (playerIds.length < MIN_AVAILABLE_PLAYERS) {
@@ -446,13 +474,13 @@ export function generateSchedule(
   }
 
   // Phase 1: Try strict mode (no repeat partnerships)
-  const strictResult = tryGenerateWithMode(playerIds, numCourts, false);
+  const strictResult = tryGenerateWithMode(playerIds, numCourts, false, targetRounds);
   if (strictResult) {
     return strictResult;
   }
 
   // Phase 2: Try relaxed mode (allow repeat partnerships)
-  const relaxedResult = tryGenerateWithMode(playerIds, numCourts, true);
+  const relaxedResult = tryGenerateWithMode(playerIds, numCourts, true, targetRounds);
   if (relaxedResult) {
     return relaxedResult;
   }
@@ -470,21 +498,24 @@ export function generateSchedule(
  * @param playerIds - All player IDs
  * @param numCourts - Number of courts
  * @param allowRepeatPartnerships - Whether to allow repeat partnerships
+ * @param targetRounds - Optional fixed number of rounds
  * @returns Schedule if successful, null if all attempts failed
  */
 function tryGenerateWithMode(
   playerIds: string[],
   numCourts: number,
-  allowRepeatPartnerships: boolean
+  allowRepeatPartnerships: boolean,
+  targetRounds?: number
 ): Schedule | null {
   const warnings: string[] = [];
   let bestState: ScheduleState | null = null;
   let bestGamesVariance = Infinity;
   let bestConstraintsRelaxed: string[] = [];
+  const isFixedRounds = targetRounds !== undefined;
 
   // Try up to MAX_ATTEMPTS with different shuffles
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const result = attemptGeneration(playerIds, numCourts, allowRepeatPartnerships);
+    const result = attemptGeneration(playerIds, numCourts, allowRepeatPartnerships, targetRounds);
 
     if (result.success) {
       // Found a valid schedule
@@ -512,13 +543,29 @@ function tryGenerateWithMode(
   }
 
   // If we found at least one valid schedule, use the best one
-  if (bestState && validateSchedule(bestState, playerIds)) {
+  // For fixed rounds, validation always passes so we can use any result
+  const targetGamesValidation = isFixedRounds ? null : DEFAULT_GAMES_PER_PLAYER;
+  if (bestState && validateSchedule(bestState, playerIds, targetGamesValidation)) {
     const byeStats = getByeStats(bestState);
     if (byeStats.max - byeStats.min > 2) {
       warnings.push(
         `Bye distribution is uneven (${byeStats.min}-${byeStats.max} byes per player)`
       );
     }
+
+    // For fixed rounds, add a warning about games per player range
+    if (isFixedRounds) {
+      const gamesDistribution: number[] = [];
+      for (const playerId of playerIds) {
+        gamesDistribution.push(bestState.gamesPlayed.get(playerId) || 0);
+      }
+      const minGames = Math.min(...gamesDistribution);
+      const maxGames = Math.max(...gamesDistribution);
+      if (minGames !== maxGames) {
+        warnings.push(`Games per player: ${minGames}-${maxGames}`);
+      }
+    }
+
     // Include any constraint relaxation warnings
     warnings.push(...bestConstraintsRelaxed);
     return { rounds: bestState.rounds, warnings };
@@ -534,10 +581,12 @@ function tryGenerateWithMode(
     const minGames = Math.min(...gamesDistribution);
     const maxGames = Math.max(...gamesDistribution);
 
-    if (minGames !== GAMES_PER_PLAYER || maxGames !== GAMES_PER_PLAYER) {
+    if (!isFixedRounds && (minGames !== DEFAULT_GAMES_PER_PLAYER || maxGames !== DEFAULT_GAMES_PER_PLAYER)) {
       warnings.push(
         `Could not achieve exactly 8 games per player (range: ${minGames}-${maxGames} games)`
       );
+    } else if (isFixedRounds && minGames !== maxGames) {
+      warnings.push(`Games per player: ${minGames}-${maxGames}`);
     }
 
     // Include any constraint relaxation warnings
@@ -563,11 +612,13 @@ function tryGenerateWithMode(
  *
  * @param schedule - The schedule to validate
  * @param playerIds - All player IDs in the season roster
+ * @param expectedGames - Expected games range { min, max } or null to skip game count validation
  * @returns Array of violation messages (empty if valid)
  */
 export function validateScheduleConstraints(
   schedule: Schedule,
-  playerIds: string[]
+  playerIds: string[],
+  expectedGames: { min: number; max: number } | null = { min: DEFAULT_GAMES_PER_PLAYER, max: DEFAULT_GAMES_PER_PLAYER }
 ): string[] {
   const violations: string[] = [];
   const partnerships = new Set<string>();
@@ -609,13 +660,18 @@ export function validateScheduleConstraints(
     }
   }
 
-  // Check game counts
-  for (const playerId of playerIds) {
-    const games = gamesPlayed.get(playerId) || 0;
-    if (games !== GAMES_PER_PLAYER) {
-      violations.push(
-        `Player ${playerId} has ${games} games (expected ${GAMES_PER_PLAYER})`
-      );
+  // Check game counts (if validation is enabled)
+  if (expectedGames !== null) {
+    for (const playerId of playerIds) {
+      const games = gamesPlayed.get(playerId) || 0;
+      if (games < expectedGames.min || games > expectedGames.max) {
+        const expectedStr = expectedGames.min === expectedGames.max
+          ? `${expectedGames.min}`
+          : `${expectedGames.min}-${expectedGames.max}`;
+        violations.push(
+          `Player ${playerId} has ${games} games (expected ${expectedStr})`
+        );
+      }
     }
   }
 
@@ -624,13 +680,21 @@ export function validateScheduleConstraints(
 
 /**
  * Calculate expected rounds for a given player and court configuration
+ *
+ * @param numPlayers - Number of players
+ * @param numCourts - Number of courts
+ * @param targetRounds - Optional fixed rounds (returned as-is if provided)
  */
 export function calculateExpectedRounds(
   numPlayers: number,
-  numCourts: number
+  numCourts: number,
+  targetRounds?: number
 ): number {
+  if (targetRounds !== undefined) {
+    return targetRounds;
+  }
   const playersPerRound = numCourts * 4;
-  return Math.ceil((numPlayers * GAMES_PER_PLAYER) / playersPerRound);
+  return Math.ceil((numPlayers * DEFAULT_GAMES_PER_PLAYER) / playersPerRound);
 }
 
 /**
@@ -642,4 +706,34 @@ export function calculateByesPerRound(
 ): number {
   const playersPerRound = numCourts * 4;
   return Math.max(0, numPlayers - playersPerRound);
+}
+
+/**
+ * Calculate expected games per player for a given configuration
+ *
+ * @param numPlayers - Number of players
+ * @param numCourts - Number of courts
+ * @param targetRounds - Optional fixed rounds (if provided, calculates based on rounds)
+ * @returns Expected games as { min, max } range
+ */
+export function calculateExpectedGamesPerPlayer(
+  numPlayers: number,
+  numCourts: number,
+  targetRounds?: number
+): { min: number; max: number } {
+  if (targetRounds === undefined) {
+    // Auto-mode: target exactly 8 games per player
+    return { min: DEFAULT_GAMES_PER_PLAYER, max: DEFAULT_GAMES_PER_PLAYER };
+  }
+
+  // Fixed rounds mode: calculate expected range
+  const playersPerRound = numCourts * 4;
+  const totalGameSlots = targetRounds * playersPerRound;
+  const gamesPerPlayer = totalGameSlots / numPlayers;
+
+  // Players get floor or ceil of the average
+  const minGames = Math.floor(gamesPerPlayer);
+  const maxGames = Math.ceil(gamesPerPlayer);
+
+  return { min: minGames, max: maxGames };
 }

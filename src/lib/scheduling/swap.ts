@@ -284,12 +284,14 @@ export function getValidSwapTargets(
  * @param allGames - All games across all rounds in the week
  * @param playerIds - All player IDs in the schedule
  * @param playerNames - Map of player ID to name (for readable warnings)
+ * @param expectedGames - Expected games range { min, max } (default: exactly 8)
  * @returns Array of warning messages
  */
 export function checkSwapViolations(
   allGames: SwapGame[],
   playerIds: string[],
-  playerNames: Map<string, string>
+  playerNames: Map<string, string>,
+  expectedGames: { min: number; max: number } = { min: 8, max: 8 }
 ): string[] {
   const warnings: string[] = [];
   const partnerships = new Map<string, number>(); // partnership key -> count
@@ -334,10 +336,14 @@ export function checkSwapViolations(
   }
 
   // Check game count violations
+  const expectedStr = expectedGames.min === expectedGames.max
+    ? `${expectedGames.min}`
+    : `${expectedGames.min}-${expectedGames.max}`;
+
   for (const [playerId, count] of gamesPerPlayer) {
-    if (count !== 8) {
+    if (count < expectedGames.min || count > expectedGames.max) {
       const name = playerNames.get(playerId) || playerId;
-      warnings.push(`${name} has ${count} games (expected 8)`);
+      warnings.push(`${name} has ${count} games (expected ${expectedStr})`);
     }
   }
 

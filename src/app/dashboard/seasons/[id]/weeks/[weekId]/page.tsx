@@ -210,6 +210,7 @@ export default async function WeekManagementPage({
               availablePlayers={availablePlayers}
               hasExistingSchedule={hasExistingSchedule}
               weekStatus={currentWeek.status}
+              roundsPerWeek={season.rounds_per_week}
             />
           )}
 

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Calendar, Trophy } from "lucide-react";
+import { Users, Calendar, Trophy, Settings } from "lucide-react";
 
 // Navigation items for season sections
 const navItems = [
   { href: "roster", label: "Roster", icon: Users },
   { href: "schedule", label: "Schedule", icon: Calendar },
   { href: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "settings", label: "Settings", icon: Settings },
 ] as const;
 
 interface SeasonNavProps {
@@ -29,6 +30,7 @@ export function SeasonNav({ seasonId }: SeasonNavProps) {
   const getCurrentSection = () => {
     if (pathname.includes("/roster")) return "roster";
     if (pathname.includes("/leaderboard")) return "leaderboard";
+    if (pathname.includes("/settings")) return "settings";
     // Default to schedule (covers /schedule and any week pages under it)
     return "schedule";
   };

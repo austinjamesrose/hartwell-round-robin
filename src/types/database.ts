@@ -20,6 +20,7 @@ export type Database = {
           start_date: string;
           num_weeks: number;
           num_courts: number;
+          rounds_per_week: number | null;
           status: "active" | "completed" | "archived";
           created_at: string;
           updated_at: string;
@@ -31,6 +32,7 @@ export type Database = {
           start_date: string;
           num_weeks?: number;
           num_courts?: number;
+          rounds_per_week?: number | null;
           status?: "active" | "completed" | "archived";
           created_at?: string;
           updated_at?: string;
@@ -42,6 +44,7 @@ export type Database = {
           start_date?: string;
           num_weeks?: number;
           num_courts?: number;
+          rounds_per_week?: number | null;
           status?: "active" | "completed" | "archived";
           created_at?: string;
           updated_at?: string;

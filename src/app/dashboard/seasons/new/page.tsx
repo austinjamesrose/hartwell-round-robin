@@ -105,6 +105,7 @@ export default function CreateSeasonPage() {
       start_date: data.startDate,
       num_weeks: data.numWeeks,
       num_courts: data.numCourts,
+      rounds_per_week: data.roundsPerWeek ?? null,
       status: "active",
     };
 
@@ -279,6 +280,34 @@ export default function CreateSeasonPage() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="roundsPerWeek"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rounds Per Week (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          placeholder="Auto-calculate"
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? null : parseInt(val) || null);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Leave blank for 8 games per player. Set a value to fix
+                        rounds (players may get fewer games).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex gap-4">
                   <Button type="submit" disabled={isLoading || !!nameError || isValidatingName}>
