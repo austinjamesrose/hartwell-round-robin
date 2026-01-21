@@ -34,6 +34,7 @@ import {
   getValidSwapTargets,
   type SwapGame,
 } from "@/lib/scheduling/swap";
+import { calculateExpectedGamesPerPlayer } from "@/lib/scheduling/generateSchedule";
 import { canUnfinalizeWeek, canMarkWeekComplete } from "@/lib/weeks/validation";
 import { exportSchedulePdf } from "@/lib/pdf/exportSchedulePdf";
 import { exportScoreSheetsPdf } from "@/lib/pdf/exportScoreSheetsPdf";
@@ -67,6 +68,8 @@ interface ScheduleViewerProps {
   weekId: string;
   gamesWithScoresCount: number;
   scheduleInfo: ScheduleInfo;
+  numCourts: number;
+  roundsPerWeek: number | null;
 }
 
 // Represents a single round for display
@@ -107,6 +110,8 @@ export function ScheduleViewer({
   weekId,
   gamesWithScoresCount,
   scheduleInfo,
+  numCourts,
+  roundsPerWeek,
 }: ScheduleViewerProps) {
   const router = useRouter();
 
@@ -372,7 +377,12 @@ export function ScheduleViewer({
     }));
 
     const playerIds = players.map((p) => p.id);
-    const newWarnings = checkSwapViolations(allSwapGames, playerIds, playerNameMap);
+    const expectedGames = calculateExpectedGamesPerPlayer(
+      playerIds.length,
+      numCourts,
+      roundsPerWeek ?? undefined
+    );
+    const newWarnings = checkSwapViolations(allSwapGames, playerIds, playerNameMap, expectedGames);
     setWarnings(newWarnings);
   }
 

@@ -228,6 +228,8 @@ export default async function WeekManagementPage({
               weekNumber: currentWeek.week_number,
               weekDate: formatDate(currentWeek.date),
             }}
+            numCourts={season.num_courts}
+            roundsPerWeek={season.rounds_per_week}
           />
 
           {/* Score Entry (shows for finalized/completed weeks) */}

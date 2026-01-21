@@ -105,6 +105,8 @@ const defaultProps = {
     weekNumber: 1,
     weekDate: "2026-01-15",
   },
+  numCourts: 2,
+  roundsPerWeek: null,
 };
 
 describe("ScheduleViewer - Swap Mode", () => {
