@@ -14,30 +14,40 @@ A Next.js application for managing pickleball round robin leagues.
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── dashboard/
-│   │   ├── seasons/
-│   │   │   ├── [id]/
-│   │   │   │   ├── components/    # Season-specific components
-│   │   │   │   ├── leaderboard/   # Player rankings
-│   │   │   │   ├── roster/        # Player roster management
-│   │   │   │   ├── schedule/      # Week list
-│   │   │   │   ├── settings/      # Season settings (rounds per week)
-│   │   │   │   └── weeks/[weekId] # Week schedule management
-│   │   │   └── new/               # Create new season
-│   │   └── players/               # Global player management
-│   └── (auth pages)
-├── components/ui/          # shadcn/ui components
-├── lib/
-│   ├── scheduling/         # Schedule generation algorithm
-│   ├── seasons/            # Season validation
-│   ├── players/            # Player validation
-│   ├── leaderboard/        # Ranking calculations
-│   ├── pdf/                # PDF export functions
-│   └── supabase/           # Supabase client utilities
-└── types/
-    └── database.ts         # TypeScript types for Supabase
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── dashboard/
+│   │   │   ├── seasons/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   ├── components/    # Season-specific components
+│   │   │   │   │   ├── leaderboard/   # Player rankings
+│   │   │   │   │   ├── roster/        # Player roster management
+│   │   │   │   │   ├── schedule/      # Week list
+│   │   │   │   │   ├── settings/      # Season settings (rounds per week)
+│   │   │   │   │   └── weeks/[weekId] # Week schedule management
+│   │   │   │   └── new/               # Create new season
+│   │   │   └── players/               # Global player management
+│   │   └── (auth pages)
+│   ├── components/ui/          # shadcn/ui components
+│   ├── lib/
+│   │   ├── auth/               # Authentication helpers
+│   │   ├── availability/       # Player availability logic
+│   │   ├── games/              # Game management
+│   │   ├── leaderboard/        # Ranking calculations
+│   │   ├── pdf/                # PDF export functions
+│   │   ├── players/            # Player validation
+│   │   ├── scheduling/         # Schedule generation algorithm
+│   │   ├── scores/             # Score entry logic
+│   │   ├── seasons/            # Season validation
+│   │   ├── supabase/           # Supabase client utilities
+│   │   └── weeks/              # Week management
+│   └── types/
+│       └── database.ts         # TypeScript types for Supabase
+├── docs/
+│   └── USER_GUIDE.md           # End-user documentation
+├── supabase/
+│   └── schema.sql              # Database schema
+└── archive/                    # Historical files from initial build
 ```
 
 ## Key Features
