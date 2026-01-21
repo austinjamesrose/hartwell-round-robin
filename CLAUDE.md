@@ -46,7 +46,8 @@ A Next.js application for managing pickleball round robin leagues.
 ├── docs/
 │   └── USER_GUIDE.md           # End-user documentation
 ├── supabase/
-│   └── schema.sql              # Database schema
+│   ├── schema.sql              # Full database schema (for new setups)
+│   └── migrations/             # Incremental schema changes
 └── archive/                    # Historical files from initial build
 ```
 
@@ -83,6 +84,8 @@ Key tables (see `supabase/schema.sql`):
 - `games` - Individual game matchups with scores
 - `byes` - Players sitting out each round
 - `player_availability` - Per-week player availability
+
+**Migrations:** Schema changes are tracked in `supabase/migrations/`. Run new migrations in the Supabase SQL Editor when deploying updates.
 
 ## Running Tests
 
