@@ -92,7 +92,7 @@ describe("partnershipKey", () => {
   });
 
   it("sorts player IDs alphabetically", () => {
-    expect(partnershipKey("zebra", "apple")).toBe("apple-zebra");
+    expect(partnershipKey("zebra", "apple")).toBe("apple|zebra");
   });
 });
 

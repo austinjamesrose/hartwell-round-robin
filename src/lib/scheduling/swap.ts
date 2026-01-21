@@ -326,7 +326,7 @@ export function checkSwapViolations(
   // Check for repeat partnerships
   for (const [key, count] of partnerships) {
     if (count > 1) {
-      const [p1, p2] = key.split("-");
+      const [p1, p2] = key.split("|");
       const name1 = playerNames.get(p1) || p1;
       const name2 = playerNames.get(p2) || p2;
       warnings.push(`${name1} and ${name2} are partnered ${count} times`);

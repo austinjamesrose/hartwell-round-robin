@@ -70,10 +70,11 @@ const MAX_ATTEMPTS = 100; // Number of shuffle/retry attempts
 
 /**
  * Creates a consistent partnership key by sorting player IDs
- * This ensures "a-b" and "b-a" map to the same key
+ * This ensures "a|b" and "b|a" map to the same key
+ * Uses "|" as delimiter since UUIDs contain hyphens
  */
 export function partnershipKey(a: string, b: string): string {
-  return [a, b].sort().join("-");
+  return [a, b].sort().join("|");
 }
 
 /**
