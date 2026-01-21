@@ -111,4 +111,4 @@ The algorithm is in `src/lib/scheduling/generateSchedule.ts`. Key concepts:
 
 ## Future Work
 
-See `PLAN-byes-per-player.md` for planned enhancement to specify byes per player instead of rounds.
+See `docs/PLAN-byes-per-player.md` for planned enhancement to specify byes per player instead of rounds.
