@@ -297,11 +297,78 @@ That's a lot more rounds! This is actually the correct dynamic behavior - fewer 
 
 ## Edge Cases to Handle
 
-1. **Perfect fit (players = courts × 4):** No byes possible. Fall back to 8 games per player mode or warn user.
+### Player Count Impact Analysis (6 courts, 1 bye per player target)
 
-2. **More players than courts can handle with target byes:** Calculate rounds, may result in many rounds.
+| Players | Byes/Round | Rounds for 1 Bye Each | Games/Player | Notes |
+|---------|------------|----------------------|--------------|-------|
+| 24 | 0 | **N/A** | 8 | Perfect fit - no byes possible |
+| 26 | 2 | 13 | ~12 | Many rounds, many games |
+| 28 | 4 | 7 | ~6 | Sweet spot |
+| 30 | 6 | 5 | ~4 | Few rounds, few games |
+| 32 | 8 | 4 | ~3 | Very few games |
 
-3. **Zero byes requested but not perfect fit:** Warn that byes are unavoidable, use minimum possible.
+**Key insight:** More players = fewer rounds needed for same byes, but also fewer games per player.
+
+### Detailed Edge Cases
+
+1. **Perfect fit (24 players on 6 courts):**
+   - 0 byes per round - everyone plays every round
+   - **Impossible to give anyone a bye**
+   - System should warn: "With 24 players on 6 courts, all players fit every round. Byes are not possible."
+   - Options for admin:
+     - Fall back to auto mode (8 games per player)
+     - Mark 1+ players unavailable to create byes
+
+2. **Near-perfect fit (26 players on 6 courts):**
+   - Only 2 byes per round
+   - 1 bye per player requires **13 rounds** (~12 games each)
+   - System should warn: "With 26 players, 1 bye per player requires 13 rounds. Consider marking more players unavailable or using auto mode."
+
+3. **High player count (30+ players):**
+   - 30 players: 6 byes/round → 5 rounds for 1 bye each → only ~4 games per player
+   - 32 players: 8 byes/round → 4 rounds for 1 bye each → only ~3 games per player
+   - System should warn: "With 30 players, 1 bye per player results in only 4 games each. Consider increasing byes or using auto mode."
+
+4. **Zero byes requested but not perfect fit:**
+   - Admin sets `byes_per_player = 0` but has 28 players
+   - Byes are unavoidable (4 per round)
+   - System should warn: "With 28 players on 6 courts, 4 players must sit out each round. 0 byes per player is not possible."
+
+### Recommended UI Warnings
+
+Add dynamic warnings in the Settings page based on roster count:
+
+```typescript
+function getByesWarning(
+  numPlayers: number,
+  numCourts: number,
+  byesPerPlayer: number
+): string | null {
+  const playersPerRound = numCourts * 4;
+  const byesPerRound = numPlayers - playersPerRound;
+
+  // Perfect fit - no byes possible
+  if (byesPerRound <= 0 && byesPerPlayer > 0) {
+    return `With ${numPlayers} players on ${numCourts} courts, all players fit every round. Byes are not possible.`;
+  }
+
+  // Calculate what this config produces
+  const rounds = calculateRoundsFromByes(numPlayers, numCourts, byesPerPlayer);
+  const gamesPerPlayer = Math.floor((rounds * playersPerRound) / numPlayers);
+
+  // Warn if too many rounds
+  if (rounds > 12) {
+    return `This configuration requires ${rounds} rounds. Consider using auto mode or adjusting player availability.`;
+  }
+
+  // Warn if too few games
+  if (gamesPerPlayer < 5) {
+    return `This configuration results in only ~${gamesPerPlayer} games per player. Consider reducing byes or using auto mode.`;
+  }
+
+  return null;
+}
+```
 
 ## Migration Path
 
