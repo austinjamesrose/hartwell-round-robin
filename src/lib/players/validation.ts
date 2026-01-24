@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { loggers } from "@/lib/logger";
 
 // Validation schema for creating a new player
 export const newPlayerSchema = z.object({
   name: z
     .string()
     .min(1, "Player name is required")
-    .transform((val) => val.trim())
-    .refine((val) => val.length > 0, "Player name cannot be empty after trimming"),
+    .transform((val) => sanitizePlayerName(val))
+    .refine((val) => val.length > 0, "Player name cannot be empty after sanitization"),
 });
 
 export type NewPlayerFormValues = z.infer<typeof newPlayerSchema>;
@@ -33,16 +34,16 @@ export function isPlayerInSeason(
 }
 
 /**
- * Validate that a player name is not empty after trimming
+ * Validate that a player name is not empty after sanitization
  * @param name - The player name to validate
- * @returns The trimmed name if valid, throws error if invalid
+ * @returns The sanitized name if valid, throws error if invalid
  */
 export function validatePlayerName(name: string): string {
-  const trimmed = name.trim();
-  if (trimmed.length === 0) {
+  const sanitized = sanitizePlayerName(name);
+  if (sanitized.length === 0) {
     throw new Error("Player name cannot be empty");
   }
-  return trimmed;
+  return sanitized;
 }
 
 /**
@@ -87,13 +88,38 @@ export type PlayerNameValidationResult = {
 };
 
 /**
- * Normalizes a player name by trimming whitespace and collapsing multiple spaces.
+ * Sanitizes a player name for defense-in-depth security.
+ * Strips HTML tags, control characters, and normalizes whitespace.
+ *
+ * @param name - The raw player name input
+ * @returns The sanitized name
+ */
+export function sanitizePlayerName(name: string): string {
+  return (
+    name
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, "")
+      // Remove control characters (ASCII 0-31 and 127, except whitespace)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Normalize different types of whitespace to regular space
+      .replace(/[\t\n\r\f\v]+/g, " ")
+      // Collapse multiple spaces
+      .replace(/\s+/g, " ")
+      // Trim leading/trailing whitespace
+      .trim()
+  );
+}
+
+/**
+ * Normalizes a player name by sanitizing and then applying standard normalization.
+ * This provides consistent formatting across the application.
  *
  * @param name - The player name to normalize
  * @returns The normalized name
  */
 export function normalizePlayerName(name: string): string {
-  return name.trim().replace(/\s+/g, " ");
+  // Use sanitizePlayerName which handles all normalization
+  return sanitizePlayerName(name);
 }
 
 /**
@@ -129,7 +155,7 @@ export async function validatePlayerNameForDuplicate(
   if (error) {
     // If there's a database error, we'll let the form proceed
     // and catch the duplicate at insert time
-    console.error("Error checking player name uniqueness:", error);
+    loggers.validation.error("Error checking player name uniqueness", error, { adminId });
     return { valid: true };
   }
 

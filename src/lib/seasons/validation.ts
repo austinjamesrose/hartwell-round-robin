@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { loggers } from "@/lib/logger";
 
 // Validation schema for creating a new season
 // These rules match the database constraints in supabase/schema.sql
@@ -98,7 +99,7 @@ export async function validateSeasonName(
   if (error) {
     // If there's a database error, we'll let the form proceed
     // and catch the duplicate at insert time
-    console.error("Error checking season name uniqueness:", error);
+    loggers.validation.error("Error checking season name uniqueness", error, { adminId });
     return { valid: true };
   }
 

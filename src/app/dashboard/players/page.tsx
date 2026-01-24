@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { loggers } from "@/lib/logger";
 import type { Database } from "@/types/database";
 import {
   Card,
@@ -39,7 +40,7 @@ export default async function PlayersPage() {
     .order("name", { ascending: true });
 
   if (playersError) {
-    console.error("Error fetching players:", playersError);
+    loggers.players.error("Failed to fetch players", playersError);
   }
 
   const players = (playersData ?? []) as Player[];
@@ -50,7 +51,7 @@ export default async function PlayersPage() {
     .select("player_id, season_id");
 
   if (spError) {
-    console.error("Error fetching season_players:", spError);
+    loggers.players.error("Failed to fetch season_players", spError);
   }
 
   const seasonPlayers = seasonPlayersData ?? [];
@@ -62,7 +63,7 @@ export default async function PlayersPage() {
     .order("name", { ascending: true });
 
   if (seasonsError) {
-    console.error("Error fetching seasons:", seasonsError);
+    loggers.players.error("Failed to fetch seasons", seasonsError);
   }
 
   const seasons = (seasonsData ?? []) as Season[];

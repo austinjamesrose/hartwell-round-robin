@@ -384,8 +384,8 @@ export function ScheduleViewer({
     const supabase = createClient();
 
     try {
-      // Update all games
-      for (const game of games) {
+      // Update all games in parallel
+      const gameUpdatePromises = games.map(async (game) => {
         const { error: updateError } = await supabase
           .from("games")
           .update({
@@ -397,20 +397,43 @@ export function ScheduleViewer({
           .eq("id", game.id);
 
         if (updateError) {
-          throw new Error(`Failed to update game: ${updateError.message}`);
+          return { success: false, id: game.id, error: updateError.message };
         }
-      }
+        return { success: true, id: game.id };
+      });
 
-      // Update all byes
-      for (const bye of byes) {
+      // Update all byes in parallel
+      const byeUpdatePromises = byes.map(async (bye) => {
         const { error: updateError } = await supabase
           .from("byes")
           .update({ player_id: bye.player_id })
           .eq("id", bye.id);
 
         if (updateError) {
-          throw new Error(`Failed to update bye: ${updateError.message}`);
+          return { success: false, id: bye.id, error: updateError.message };
         }
+        return { success: true, id: bye.id };
+      });
+
+      // Wait for all updates to complete
+      const [gameResults, byeResults] = await Promise.all([
+        Promise.all(gameUpdatePromises),
+        Promise.all(byeUpdatePromises),
+      ]);
+
+      // Check for any failures
+      const failedGames = gameResults.filter((r) => !r.success);
+      const failedByes = byeResults.filter((r) => !r.success);
+
+      if (failedGames.length > 0 || failedByes.length > 0) {
+        const errors: string[] = [];
+        if (failedGames.length > 0) {
+          errors.push(`${failedGames.length} game update(s) failed`);
+        }
+        if (failedByes.length > 0) {
+          errors.push(`${failedByes.length} bye update(s) failed`);
+        }
+        throw new Error(errors.join(", "));
       }
 
       // Update schedule warnings on the week

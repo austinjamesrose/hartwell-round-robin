@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { loggers } from "@/lib/logger";
 import type { Database } from "@/types/database";
 import {
   Card,
@@ -85,7 +86,7 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching seasons:", error);
+    loggers.dashboard.error("Failed to fetch seasons", error);
   }
 
   // Type the data properly - weeks comes as an array from the join
