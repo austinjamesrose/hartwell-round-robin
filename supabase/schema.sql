@@ -429,6 +429,25 @@ CREATE POLICY "Users can insert byes for their seasons"
         )
     );
 
+CREATE POLICY "Users can update byes for their seasons"
+    ON byes FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM weeks
+            JOIN seasons ON seasons.id = weeks.season_id
+            WHERE weeks.id = byes.week_id
+            AND seasons.admin_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM weeks
+            JOIN seasons ON seasons.id = weeks.season_id
+            WHERE weeks.id = byes.week_id
+            AND seasons.admin_id = auth.uid()
+        )
+    );
+
 CREATE POLICY "Users can delete byes for their seasons"
     ON byes FOR DELETE
     USING (
