@@ -122,7 +122,35 @@ export function ScheduleViewer({
   // Local state for games and byes (for optimistic updates during swaps)
   const [games, setGames] = useState(initialGames);
   const [byes, setByes] = useState(initialByes);
-  const [warnings, setWarnings] = useState<string[]>(initialWarnings || []);
+  const [rawWarnings, setRawWarnings] = useState<string[]>(initialWarnings || []);
+
+  // Filter out game count warnings that are actually valid for current rounds_per_week setting
+  // Warnings like "Player has X games (expected 8)" should be hidden if X is within expected range
+  const warnings = useMemo(() => {
+    if (!expectedGamesPerPlayer) {
+      // No custom expected games, show all warnings as-is
+      return rawWarnings;
+    }
+
+    const { min: expectedMin, max: expectedMax } = expectedGamesPerPlayer;
+    const gameCountPattern = /^(.+) has (\d+) games \(expected (\d+)\)$/;
+
+    return rawWarnings.filter((warning) => {
+      const match = warning.match(gameCountPattern);
+      if (!match) {
+        // Not a game count warning, keep it
+        return true;
+      }
+
+      const actualGames = parseInt(match[2], 10);
+      // Hide warning if actual games is within the expected range for current settings
+      if (actualGames >= expectedMin && actualGames <= expectedMax) {
+        return false;
+      }
+      // Keep warning if games are truly outside expected range
+      return true;
+    });
+  }, [rawWarnings, expectedGamesPerPlayer]);
 
   // Selection state for swapping
   const [selectedPlayer, setSelectedPlayer] = useState<SwapSelection | null>(null);
@@ -382,7 +410,7 @@ export function ScheduleViewer({
 
     const playerIds = players.map((p) => p.id);
     const newWarnings = checkSwapViolations(allSwapGames, playerIds, playerNameMap);
-    setWarnings(newWarnings);
+    setRawWarnings(newWarnings);
   }
 
   // Save changes to database
@@ -470,7 +498,7 @@ export function ScheduleViewer({
   function handleCancelChanges() {
     setGames(initialGames);
     setByes(initialByes);
-    setWarnings(initialWarnings || []);
+    setRawWarnings(initialWarnings || []);
     setHasUnsavedChanges(false);
     setSelectedPlayer(null);
     setError(null);
