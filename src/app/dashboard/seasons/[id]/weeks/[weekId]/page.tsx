@@ -19,6 +19,7 @@ import { ScheduleViewer } from "./schedule-viewer";
 import { ScoreEntry } from "./score-entry";
 import { countGamesWithScores } from "@/lib/weeks/validation";
 import { formatDate } from "@/lib/dates/dateUtils";
+import { calculateExpectedGamesPerPlayer } from "@/lib/scheduling/generateSchedule";
 
 type Season = Database["public"]["Tables"]["seasons"]["Row"];
 type Week = Database["public"]["Tables"]["weeks"]["Row"];
@@ -228,6 +229,15 @@ export default async function WeekManagementPage({
               weekNumber: currentWeek.week_number,
               weekDate: formatDate(currentWeek.date),
             }}
+            expectedGamesPerPlayer={
+              season.rounds_per_week
+                ? calculateExpectedGamesPerPlayer(
+                    availablePlayers.length,
+                    season.num_courts,
+                    season.rounds_per_week
+                  )
+                : null
+            }
           />
 
           {/* Score Entry (shows for finalized/completed weeks) */}

@@ -57,6 +57,12 @@ interface ScheduleInfo {
   weekDate: string;
 }
 
+// Expected games range based on season settings
+interface ExpectedGamesRange {
+  min: number;
+  max: number;
+}
+
 // Props for the ScheduleViewer component
 interface ScheduleViewerProps {
   games: Game[];
@@ -67,6 +73,8 @@ interface ScheduleViewerProps {
   weekId: string;
   gamesWithScoresCount: number;
   scheduleInfo: ScheduleInfo;
+  // Expected games per player based on season settings (null = use default of 8)
+  expectedGamesPerPlayer?: ExpectedGamesRange | null;
 }
 
 // Represents a single round for display
@@ -107,6 +115,7 @@ export function ScheduleViewer({
   weekId,
   gamesWithScoresCount,
   scheduleInfo,
+  expectedGamesPerPlayer,
 }: ScheduleViewerProps) {
   const router = useRouter();
 
@@ -899,17 +908,20 @@ export function ScheduleViewer({
                   return nameA.localeCompare(nameB);
                 })
                 .map(([playerId, gameCount]) => {
-                  // Highlight if player doesn't have exactly 8 games (constraint violation indicator)
-                  const isNot8Games = gameCount !== 8;
+                  // Check if game count is outside the expected range
+                  // Use provided expected range, or default to exactly 8 games
+                  const expectedMin = expectedGamesPerPlayer?.min ?? 8;
+                  const expectedMax = expectedGamesPerPlayer?.max ?? 8;
+                  const isOutsideExpectedRange = gameCount < expectedMin || gameCount > expectedMax;
                   return (
                     <div
                       key={playerId}
                       className={`flex justify-between p-2 rounded ${
-                        isNot8Games ? "bg-yellow-50 text-yellow-800" : "bg-muted/50"
+                        isOutsideExpectedRange ? "bg-yellow-50 text-yellow-800" : "bg-muted/50"
                       }`}
                     >
                       <span className="truncate">{getPlayerName(playerId)}</span>
-                      <span className={`font-medium ${isNot8Games ? "text-yellow-700" : ""}`}>
+                      <span className={`font-medium ${isOutsideExpectedRange ? "text-yellow-700" : ""}`}>
                         {gameCount}
                       </span>
                     </div>
