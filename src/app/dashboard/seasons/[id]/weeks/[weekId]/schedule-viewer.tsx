@@ -122,20 +122,35 @@ export function ScheduleViewer({
   // Local state for games and byes (for optimistic updates during swaps)
   const [games, setGames] = useState(initialGames);
   const [byes, setByes] = useState(initialByes);
-  const [rawWarnings, setRawWarnings] = useState<string[]>(initialWarnings || []);
+  // Sanitize initial warnings - ensure it's an array of valid strings
+  const [rawWarnings, setRawWarnings] = useState<string[]>(() => {
+    if (!initialWarnings || !Array.isArray(initialWarnings)) {
+      return [];
+    }
+    // Filter out any null/undefined values and ensure all items are strings
+    return initialWarnings.filter((w): w is string => typeof w === "string" && w.length > 0);
+  });
 
   // Filter out game count warnings that are actually valid for current rounds_per_week setting
   // Warnings like "Player has X games (expected 8)" should be hidden if X is within expected range
   const warnings = useMemo(() => {
+    // Ensure rawWarnings is valid
+    if (!rawWarnings || !Array.isArray(rawWarnings)) {
+      return [];
+    }
+
+    // Filter out any invalid entries first
+    const validWarnings = rawWarnings.filter((w): w is string => typeof w === "string" && w.length > 0);
+
     if (!expectedGamesPerPlayer) {
       // No custom expected games, show all warnings as-is
-      return rawWarnings;
+      return validWarnings;
     }
 
     const { min: expectedMin, max: expectedMax } = expectedGamesPerPlayer;
     const gameCountPattern = /^(.+) has (\d+) games \(expected (\d+)\)$/;
 
-    return rawWarnings.filter((warning) => {
+    return validWarnings.filter((warning) => {
       const match = warning.match(gameCountPattern);
       if (!match) {
         // Not a game count warning, keep it
@@ -399,18 +414,25 @@ export function ScheduleViewer({
     toast.success(`Swapped ${player1Name} with ${player2Name}`);
 
     // Check for constraint violations across all games
-    const allSwapGames: SwapGame[] = updatedGames.map((g) => ({
-      id: g.id,
-      roundNumber: g.round_number,
-      team1Player1Id: g.team1_player1_id,
-      team1Player2Id: g.team1_player2_id,
-      team2Player1Id: g.team2_player1_id,
-      team2Player2Id: g.team2_player2_id,
-    }));
+    try {
+      const allSwapGames: SwapGame[] = updatedGames.map((g) => ({
+        id: g.id,
+        roundNumber: g.round_number,
+        team1Player1Id: g.team1_player1_id,
+        team1Player2Id: g.team1_player2_id,
+        team2Player1Id: g.team2_player1_id,
+        team2Player2Id: g.team2_player2_id,
+      }));
 
-    const playerIds = players.map((p) => p.id);
-    const newWarnings = checkSwapViolations(allSwapGames, playerIds, playerNameMap);
-    setRawWarnings(newWarnings);
+      const playerIds = players.map((p) => p.id);
+      const newWarnings = checkSwapViolations(allSwapGames, playerIds, playerNameMap);
+      // Ensure we only set valid string warnings
+      setRawWarnings(newWarnings.filter((w): w is string => typeof w === "string" && w.length > 0));
+    } catch (validationError) {
+      // If validation fails, don't crash - just log the error and clear warnings
+      console.error("Error checking swap violations:", validationError);
+      setRawWarnings([]);
+    }
   }
 
   // Save changes to database
@@ -473,11 +495,15 @@ export function ScheduleViewer({
         throw new Error(errors.join(", "));
       }
 
-      // Update schedule warnings on the week
+      // Update schedule warnings on the week (ensure valid array)
+      const validWarnings = warnings && warnings.length > 0
+        ? warnings.filter((w): w is string => typeof w === "string" && w.length > 0)
+        : null;
+
       const { error: weekError } = await supabase
         .from("weeks")
         .update({
-          schedule_warnings: warnings.length > 0 ? warnings : null,
+          schedule_warnings: validWarnings && validWarnings.length > 0 ? validWarnings : null,
         })
         .eq("id", weekId);
 
@@ -498,7 +524,11 @@ export function ScheduleViewer({
   function handleCancelChanges() {
     setGames(initialGames);
     setByes(initialByes);
-    setRawWarnings(initialWarnings || []);
+    // Sanitize initial warnings when resetting
+    const sanitizedWarnings = initialWarnings && Array.isArray(initialWarnings)
+      ? initialWarnings.filter((w): w is string => typeof w === "string" && w.length > 0)
+      : [];
+    setRawWarnings(sanitizedWarnings);
     setHasUnsavedChanges(false);
     setSelectedPlayer(null);
     setError(null);
@@ -1019,7 +1049,7 @@ export function ScheduleViewer({
             </DialogHeader>
 
             {/* Show warnings if any */}
-            {warnings.length > 0 && (
+            {warnings && warnings.length > 0 && (
               <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertDescription className="text-yellow-800">
                   <p className="font-medium mb-2">
