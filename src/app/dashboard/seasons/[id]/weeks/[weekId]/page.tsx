@@ -17,6 +17,7 @@ import {
 import { ScheduleGenerator } from "./schedule-generator";
 import { ScheduleViewer } from "./schedule-viewer";
 import { ScoreEntry } from "./score-entry";
+import { ScheduleErrorBoundary } from "./error-boundary";
 import { countGamesWithScores } from "@/lib/weeks/validation";
 import { formatDate } from "@/lib/dates/dateUtils";
 import { calculateExpectedGamesPerPlayer } from "@/lib/scheduling/generateSchedule";
@@ -216,36 +217,40 @@ export default async function WeekManagementPage({
           )}
 
           {/* Schedule Viewer (shows saved schedule from database) */}
-          <ScheduleViewer
-            games={games}
-            byes={byesRecords}
-            players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
-            scheduleWarnings={currentWeek.schedule_warnings}
-            weekStatus={currentWeek.status}
-            weekId={weekId}
-            gamesWithScoresCount={gamesWithScoresCount}
-            scheduleInfo={{
-              seasonName: season.name,
-              weekNumber: currentWeek.week_number,
-              weekDate: formatDate(currentWeek.date),
-            }}
-            expectedGamesPerPlayer={
-              season.rounds_per_week
-                ? calculateExpectedGamesPerPlayer(
-                    availablePlayers.length,
-                    season.num_courts,
-                    season.rounds_per_week
-                  )
-                : null
-            }
-          />
+          <ScheduleErrorBoundary fallbackTitle="Error displaying schedule">
+            <ScheduleViewer
+              games={games}
+              byes={byesRecords}
+              players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
+              scheduleWarnings={currentWeek.schedule_warnings}
+              weekStatus={currentWeek.status}
+              weekId={weekId}
+              gamesWithScoresCount={gamesWithScoresCount}
+              scheduleInfo={{
+                seasonName: season.name,
+                weekNumber: currentWeek.week_number,
+                weekDate: formatDate(currentWeek.date),
+              }}
+              expectedGamesPerPlayer={
+                season.rounds_per_week
+                  ? calculateExpectedGamesPerPlayer(
+                      availablePlayers.length,
+                      season.num_courts,
+                      season.rounds_per_week
+                    )
+                  : null
+              }
+            />
+          </ScheduleErrorBoundary>
 
           {/* Score Entry (shows for finalized/completed weeks) */}
-          <ScoreEntry
-            games={games}
-            players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
-            weekStatus={currentWeek.status}
-          />
+          <ScheduleErrorBoundary fallbackTitle="Error displaying score entry">
+            <ScoreEntry
+              games={games}
+              players={rosterPlayers.map((p) => ({ id: p.id, name: p.name }))}
+              weekStatus={currentWeek.status}
+            />
+          </ScheduleErrorBoundary>
         </div>
       </div>
     </div>
